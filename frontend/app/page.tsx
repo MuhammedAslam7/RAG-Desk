@@ -32,7 +32,8 @@ export default function Page() {
             Welcome to RAG Desk
           </h1>
           <p className="text-muted-foreground mb-8">
-            Sign in to access your AI chat assistant powered by your knowledge base.
+            Sign in to access your AI chat assistant powered by your knowledge
+            base.
           </p>
           <SignInPrompt />
         </div>
