@@ -13,6 +13,7 @@ from app.schemas.knowledge import (
 )
 from app.services.knowledge.ingest import ingest_document
 from app.services.knowledge.parsers.crawl import crawl_site
+from app.services.knowledge.parsers.csv_faq import parse_faq_csv
 from app.services.knowledge.parsers.csv_parser import parse_csv
 from app.services.knowledge.parsers.docx import parse_docx
 from app.services.knowledge.parsers.pdf import parse_pdf
@@ -35,11 +36,8 @@ async def add_text(
     db: AsyncSession = Depends(get_db),
 ):
     src = await ingest_document(
-        db,
-        org_id=user.organizationId,
-        title=body.title,
-        text=body.content,
-        source_type="text",
+        db, org_id=user.organizationId, title=body.title,
+        text=body.content, source_type="text",
     )
     return {"id": src.id}
 
@@ -51,16 +49,31 @@ async def add_faq(
     db: AsyncSession = Depends(get_db),
 ):
     text = f"Q: {body.question}\nA: {body.answer}"
-
     src = await ingest_document(
-        db,
-        org_id=user.organizationId,
-        title=body.question[:80],
-        text=text,
-        source_type="faq",
+        db, org_id=user.organizationId, title=body.question[:80],
+        text=text, source_type="faq",
     )
-
     return {"id": src.id}
+
+
+@router.post("/faq/csv")
+async def import_faq_csv(
+    file: UploadFile = File(...),
+    user: User = Depends(require_org),
+    db: AsyncSession = Depends(get_db),
+):
+    data = await file.read()
+    pairs = parse_faq_csv(data)
+    if not pairs:
+        raise HTTPException(400, "No question/answer rows found. Use 'question' and 'answer' columns.")
+    ids = []
+    for p in pairs:
+        src = await ingest_document(
+            db, org_id=user.organizationId, title=p["question"][:80],
+            text=f"Q: {p['question']}\nA: {p['answer']}", source_type="faq",
+        )
+        ids.append(src.id)
+    return {"imported": len(ids)}
 
 
 @router.post("/crawl")
@@ -70,19 +83,13 @@ async def add_crawl(
     db: AsyncSession = Depends(get_db),
 ):
     pages = crawl_site(body.url, body.limit)
-
     ids = []
-
     for page in pages:
         src = await ingest_document(
-            db,
-            org_id=user.organizationId,
-            title=page["title"],
-            text=page["markdown"],
-            source_type="crawl",
+            db, org_id=user.organizationId, title=page["title"],
+            text=page["markdown"], source_type="crawl",
         )
         ids.append(src.id)
-
     return {"sources": ids}
 
 
@@ -95,26 +102,20 @@ async def upload_file(
 ):
     data = await file.read()
     name = (file.filename or "").lower()
-
     if name.endswith(".pdf"):
         text, stype = parse_pdf(data), "pdf"
     elif name.endswith(".docx"):
         text, stype = parse_docx(data), "docx"
     elif name.endswith(".csv"):
         text, stype = parse_csv(data), "csv"
-    elif name.endswith(".txt"):
+    elif name.endswith((".txt", ".md", ".markdown")):
         text, stype = data.decode("utf-8", errors="ignore"), "text"
     else:
         raise HTTPException(400, "Unsupported file type")
-
     src = await ingest_document(
-        db,
-        org_id=user.organizationId,
-        title=title or file.filename,
-        text=text,
-        source_type=stype,
+        db, org_id=user.organizationId, title=title or file.filename,
+        text=text, source_type=stype,
     )
-
     return {"id": src.id}
 
 
@@ -124,15 +125,8 @@ async def delete_source(
     user: User = Depends(require_org),
     db: AsyncSession = Depends(get_db),
 ):
-    src = await knowledge_repo.get_source_for_org(
-        db,
-        id,
-        user.organizationId,
-    )
-
+    src = await knowledge_repo.get_source_for_org(db, id, user.organizationId)
     if src is None:
         raise HTTPException(404, "Source not found")
-
     await knowledge_repo.delete_source(db, src)
-
     return {"success": True}

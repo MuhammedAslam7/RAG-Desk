@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
+import DashboardShell from "@/components/dashboard-shell";
 
 async function hasOrg(token: string | null): Promise<boolean> {
   if (!token) return false;
@@ -17,5 +18,5 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!userId) redirect("/sign-in");
   const token = await getToken();
   if (!(await hasOrg(token))) redirect("/onboarding");
-  return <>{children}</>;
+  return <DashboardShell>{children}</DashboardShell>;
 }

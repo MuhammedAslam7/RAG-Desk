@@ -1,7 +1,7 @@
 "use client";
 import { useAuth } from "@clerk/nextjs";
-import SignInPrompt from "@/components/sign-in-prompt";
 import Chat from "@/components/chat";
+import SignInPrompt from "@/components/sign-in-prompt";
 
 export default function Page() {
   const { isLoaded, isSignedIn } = useAuth();
