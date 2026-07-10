@@ -1,246 +1,334 @@
 "use client";
+
 import { useState } from "react";
-import { useKnowledge } from "@/hooks/use-knowledge";
-import RichTextEditor from "@/components/rich-text-editor";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Upload,
+  FileText,
+  HelpCircle,
+  Grid3x3,
+  Globe,
+  Trash2,
+  Check,
+  Loader2,
+  Plus,
+} from "lucide-react";
 
-type Method = "upload" | "paste" | "rich" | "faq" | "faqcsv" | "crawl";
+type Method = "upload" | "paste" | "faq" | "faqcsv" | "crawl";
 
-const METHODS: { id: Method; label: string; hint: string }[] = [
-  { id: "upload", label: "Upload file", hint: "PDF, DOCX, CSV, TXT, MD" },
-  { id: "paste", label: "Paste text", hint: "Plain text block" },
-  { id: "rich", label: "Rich text", hint: "Formatted editor" },
-  { id: "faq", label: "Add FAQ", hint: "One question + answer" },
-  { id: "faqcsv", label: "Import FAQ CSV", hint: "Bulk question/answer" },
-  { id: "crawl", label: "Crawl website", hint: "Fetch pages from a URL" },
+const METHODS: { id: Method; label: string; hint: string; icon: any }[] = [
+  { id: "upload", label: "Upload file", hint: "PDF, DOCX, CSV, TXT", icon: Upload },
+  { id: "paste", label: "Paste text", hint: "Plain text content", icon: FileText },
+  { id: "faq", label: "Add FAQ", hint: "Q&A pair", icon: HelpCircle },
+  { id: "faqcsv", label: "Import CSV", hint: "Bulk import", icon: Grid3x3 },
+  { id: "crawl", label: "Crawl website", hint: "Fetch pages", icon: Globe },
 ];
 
-const TYPE_LABEL: Record<string, string> = {
-  text: "Text", faq: "FAQ", pdf: "PDF", docx: "DOCX", csv: "CSV", crawl: "Web",
-};
+interface KnowledgeSource {
+  id: string;
+  title: string;
+  type: string;
+  status: "success" | "processing" | "error";
+  timestamp: Date;
+  size?: number;
+}
 
 export default function KnowledgeManager() {
-  const { sources, busy, addText, addFaq, crawl, upload, importFaqCsv, remove } = useKnowledge();
   const [method, setMethod] = useState<Method>("upload");
+  const [sources, setSources] = useState<KnowledgeSource[]>([
+    {
+      id: "1",
+      title: "Product Documentation",
+      type: "PDF",
+      status: "success",
+      timestamp: new Date(Date.now() - 86400000),
+      size: 2.5,
+    },
+    {
+      id: "2",
+      title: "FAQ Export",
+      type: "CSV",
+      status: "success",
+      timestamp: new Date(Date.now() - 172800000),
+      size: 0.5,
+    },
+  ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    content: "",
+    url: "",
+  });
+
+  const handleAdd = async () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      const newSource: KnowledgeSource = {
+        id: Date.now().toString(),
+        title: formData.title || `New ${method}`,
+        type: method.toUpperCase(),
+        status: "success",
+        timestamp: new Date(),
+        size: Math.random() * 10,
+      };
+      setSources((prev) => [newSource, ...prev]);
+      setFormData({ title: "", content: "", url: "" });
+      setIsLoading(false);
+    }, 1500);
+  };
+
+  const handleRemove = (id: string) => {
+    setSources((prev) => prev.filter((s) => s.id !== id));
+  };
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold">Knowledge base</h1>
-        <p className="mt-1 text-[0.9375rem]" style={{ color: "var(--text-muted)" }}>
-          Everything here is what your AI can answer from. Add sources, then test in chat.
+    <div className="h-full w-full bg-background flex flex-col">
+      {/* Header */}
+      <div className="border-b border-border px-8 py-6">
+        <h1 className="text-3xl font-bold text-foreground mb-1">Knowledge Base</h1>
+        <p className="text-muted-foreground">
+          Add documents, FAQs, and content your AI will use to answer questions
         </p>
-      </header>
-
-      <div className="grid gap-6 md:grid-cols-[220px_1fr]">
-        {/* method rail */}
-        <nav className="flex flex-col gap-1">
-          {METHODS.map((m) => (
-            <button
-              key={m.id}
-              className="tab flex-col !items-start gap-0.5"
-              data-active={method === m.id}
-              onClick={() => setMethod(m.id)}
-            >
-              <span>{m.label}</span>
-              <span className="text-xs font-normal" style={{ color: "var(--text-faint)" }}>
-                {m.hint}
-              </span>
-            </button>
-          ))}
-        </nav>
-
-        {/* active input */}
-        <div className="card p-6">
-          {method === "upload" && <UploadPanel onUpload={upload} busy={busy} />}
-          {method === "paste" && <PastePanel onAdd={addText} busy={busy} />}
-          {method === "rich" && <RichPanel onAdd={addText} busy={busy} />}
-          {method === "faq" && <FaqPanel onAdd={addFaq} busy={busy} />}
-          {method === "faqcsv" && <FaqCsvPanel onImport={importFaqCsv} busy={busy} />}
-          {method === "crawl" && <CrawlPanel onCrawl={crawl} busy={busy} />}
-        </div>
       </div>
 
-      {/* sources */}
-      <section className="mt-10">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold">Sources</h2>
-          <span className="text-sm" style={{ color: "var(--text-faint)" }}>
-            {sources.length} total
-          </span>
-        </div>
-        {sources.length === 0 ? (
-          <div className="card flex flex-col items-center gap-1 px-6 py-12 text-center">
-            <p className="font-medium">No knowledge yet</p>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Add your first source above. Your AI stays quiet until it has something to read.
-            </p>
+      {/* Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-6xl mx-auto px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Method Tabs */}
+            <div className="lg:col-span-1">
+              <div className="space-y-2">
+                {METHODS.map((m) => {
+                  const Icon = m.icon;
+                  const isActive = method === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setMethod(m.id)}
+                      className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
+                        isActive
+                          ? "bg-primary/10 border-primary text-foreground"
+                          : "bg-card border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="h-4 w-4" />
+                        <div>
+                          <p className="font-medium text-sm">{m.label}</p>
+                          <p className="text-xs opacity-70">{m.hint}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Form Area */}
+            <div className="lg:col-span-3">
+              <Card className="border-border bg-card p-6 mb-8">
+                <h2 className="text-lg font-semibold text-foreground mb-6">
+                  {METHODS.find((m) => m.id === method)?.label}
+                </h2>
+
+                {method === "upload" && (
+                  <div className="space-y-4">
+                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
+                      <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-sm font-medium text-foreground mb-1">
+                        Drag and drop files here
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        or click to browse (PDF, DOCX, CSV, TXT)
+                      </p>
+                      <Button size="sm" variant="outline">
+                        Choose Files
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {method === "paste" && (
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="Enter a title for this content"
+                      value={formData.title}
+                      onChange={(e) =>
+                        setFormData({ ...formData, title: e.target.value })
+                      }
+                      className="bg-input border-border"
+                    />
+                    <Textarea
+                      placeholder="Paste your text content here..."
+                      value={formData.content}
+                      onChange={(e) =>
+                        setFormData({ ...formData, content: e.target.value })
+                      }
+                      className="bg-input border-border min-h-40"
+                    />
+                    <Button
+                      onClick={handleAdd}
+                      disabled={!formData.content.trim() || isLoading}
+                      className="gap-2 bg-primary hover:bg-primary/90"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      Add Content
+                    </Button>
+                  </div>
+                )}
+
+                {method === "faq" && (
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="Question"
+                      value={formData.title}
+                      onChange={(e) =>
+                        setFormData({ ...formData, title: e.target.value })
+                      }
+                      className="bg-input border-border"
+                    />
+                    <Textarea
+                      placeholder="Answer"
+                      value={formData.content}
+                      onChange={(e) =>
+                        setFormData({ ...formData, content: e.target.value })
+                      }
+                      className="bg-input border-border min-h-32"
+                    />
+                    <Button
+                      onClick={handleAdd}
+                      disabled={!formData.content.trim() || !formData.title.trim() || isLoading}
+                      className="gap-2 bg-primary hover:bg-primary/90"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      Add FAQ
+                    </Button>
+                  </div>
+                )}
+
+                {method === "faqcsv" && (
+                  <div className="space-y-4">
+                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                      <Grid3x3 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-sm font-medium text-foreground mb-1">
+                        Upload CSV file
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Format: question, answer (one per row)
+                      </p>
+                      <Button size="sm" variant="outline">
+                        Choose CSV
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {method === "crawl" && (
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="https://example.com"
+                      value={formData.url}
+                      onChange={(e) =>
+                        setFormData({ ...formData, url: e.target.value })
+                      }
+                      className="bg-input border-border"
+                    />
+                    <Button
+                      onClick={handleAdd}
+                      disabled={!formData.url.trim() || isLoading}
+                      className="gap-2 bg-primary hover:bg-primary/90"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      Start Crawling
+                    </Button>
+                  </div>
+                )}
+              </Card>
+
+              {/* Sources List */}
+              <div>
+                <h2 className="text-lg font-semibold text-foreground mb-4">
+                  Knowledge Sources ({sources.length})
+                </h2>
+                <div className="space-y-3">
+                  {sources.length === 0 ? (
+                    <Card className="border-border bg-card/50 p-8 text-center">
+                      <p className="text-muted-foreground">
+                        No sources added yet. Start by adding content above.
+                      </p>
+                    </Card>
+                  ) : (
+                    sources.map((source) => (
+                      <Card
+                        key={source.id}
+                        className="border-border bg-card/50 p-4 flex items-center justify-between hover:bg-card transition-colors"
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div
+                            className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                              source.status === "success"
+                                ? "bg-primary/10"
+                                : source.status === "processing"
+                                ? "bg-yellow-500/10"
+                                : "bg-destructive/10"
+                            }`}
+                          >
+                            {source.status === "success" && (
+                              <Check className="h-5 w-5 text-primary" />
+                            )}
+                            {source.status === "processing" && (
+                              <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground truncate">
+                              {source.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {source.timestamp.toLocaleDateString()} •{" "}
+                              <Badge
+                                variant="secondary"
+                                className="text-xs font-medium"
+                              >
+                                {source.type}
+                              </Badge>
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemove(source.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        ) : (
-          <ul className="card divide-y" style={{ borderColor: "var(--border)" }}>
-            {sources.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-4 px-4 py-3"
-                  style={{ borderColor: "var(--border)" }}>
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{s.title}</p>
-                  <p className="text-xs" style={{ color: "var(--text-faint)" }}>
-                    {s.chunkCount} chunks
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="badge">{TYPE_LABEL[s.type] ?? s.type}</span>
-                  <button className="btn btn-danger px-2.5 py-1 text-sm" onClick={() => remove(s.id)}>
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
-  );
-}
-
-/* ---- panels ---- */
-
-function UploadPanel({ onUpload, busy }: { onUpload: (f: File) => void; busy: boolean }) {
-  const [drag, setDrag] = useState(false);
-  return (
-    <div>
-      <h3 className="mb-1 font-semibold">Upload a file</h3>
-      <p className="mb-4 text-sm" style={{ color: "var(--text-muted)" }}>
-        PDF, DOCX, CSV, TXT, or Markdown. We extract, chunk, and embed it.
-      </p>
-      <label
-        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => {
-          e.preventDefault(); setDrag(false);
-          if (e.dataTransfer.files?.[0]) onUpload(e.dataTransfer.files[0]);
-        }}
-        className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-12 text-center transition-colors"
-        style={{
-          borderColor: drag ? "var(--accent)" : "var(--border-strong)",
-          background: drag ? "var(--accent-soft)" : "transparent",
-        }}
-      >
-        <span className="font-medium">{busy ? "Uploading…" : "Drop a file or click to browse"}</span>
-        <span className="text-xs" style={{ color: "var(--text-faint)" }}>Max ~20MB</span>
-        <input
-          type="file" accept=".pdf,.docx,.csv,.txt,.md,.markdown" className="hidden"
-          onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
-        />
-      </label>
-    </div>
-  );
-}
-
-function PastePanel({ onAdd, busy }: { onAdd: (t: string, c: string) => void; busy: boolean }) {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  return (
-    <div className="space-y-4">
-      <h3 className="font-semibold">Paste text</h3>
-      <div>
-        <label className="label">Title</label>
-        <input className="input" placeholder="Refund policy" value={title}
-               onChange={(e) => setTitle(e.target.value)} />
+        </div>
       </div>
-      <div>
-        <label className="label">Content</label>
-        <textarea className="textarea" rows={8} placeholder="Paste anything…"
-                  value={content} onChange={(e) => setContent(e.target.value)} />
-      </div>
-      <button className="btn btn-primary" disabled={busy || !title.trim() || !content.trim()}
-              onClick={() => { onAdd(title, content); setTitle(""); setContent(""); }}>
-        {busy ? "Adding…" : "Add to knowledge"}
-      </button>
-    </div>
-  );
-}
-
-function RichPanel({ onAdd, busy }: { onAdd: (t: string, c: string) => void; busy: boolean }) {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  return (
-    <div className="space-y-4">
-      <h3 className="font-semibold">Rich text</h3>
-      <div>
-        <label className="label">Title</label>
-        <input className="input" placeholder="Onboarding guide" value={title}
-               onChange={(e) => setTitle(e.target.value)} />
-      </div>
-      <div>
-        <label className="label">Content</label>
-        <RichTextEditor onChange={setContent} />
-      </div>
-      <button className="btn btn-primary" disabled={busy || !title.trim() || !content.trim()}
-              onClick={() => { onAdd(title, content); setTitle(""); setContent(""); }}>
-        {busy ? "Adding…" : "Add to knowledge"}
-      </button>
-    </div>
-  );
-}
-
-function FaqPanel({ onAdd, busy }: { onAdd: (q: string, a: string) => void; busy: boolean }) {
-  const [q, setQ] = useState("");
-  const [a, setA] = useState("");
-  return (
-    <div className="space-y-4">
-      <h3 className="font-semibold">Add a single FAQ</h3>
-      <div>
-        <label className="label">Question</label>
-        <input className="input" placeholder="How do I reset my password?" value={q}
-               onChange={(e) => setQ(e.target.value)} />
-      </div>
-      <div>
-        <label className="label">Answer</label>
-        <textarea className="textarea" rows={5} value={a} onChange={(e) => setA(e.target.value)} />
-      </div>
-      <button className="btn btn-primary" disabled={busy || !q.trim() || !a.trim()}
-              onClick={() => { onAdd(q, a); setQ(""); setA(""); }}>
-        {busy ? "Adding…" : "Add FAQ"}
-      </button>
-    </div>
-  );
-}
-
-function FaqCsvPanel({ onImport, busy }: { onImport: (f: File) => void; busy: boolean }) {
-  return (
-    <div className="space-y-4">
-      <h3 className="font-semibold">Import FAQ CSV</h3>
-      <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-        A CSV with <code>question</code> and <code>answer</code> columns. Each row becomes a FAQ.
-      </p>
-      <label className="btn btn-ghost cursor-pointer">
-        {busy ? "Importing…" : "Choose CSV"}
-        <input type="file" accept=".csv" className="hidden"
-               onChange={(e) => e.target.files?.[0] && onImport(e.target.files[0])} />
-      </label>
-    </div>
-  );
-}
-
-function CrawlPanel({ onCrawl, busy }: { onCrawl: (u: string, l?: number) => void; busy: boolean }) {
-  const [url, setUrl] = useState("");
-  const [limit, setLimit] = useState(10);
-  return (
-    <div className="space-y-4">
-      <h3 className="font-semibold">Crawl a website</h3>
-      <div>
-        <label className="label">Start URL</label>
-        <input className="input" placeholder="https://docs.example.com" value={url}
-               onChange={(e) => setUrl(e.target.value)} />
-      </div>
-      <div>
-        <label className="label">Page limit</label>
-        <input className="input max-w-32" type="number" min={1} max={100} value={limit}
-               onChange={(e) => setLimit(Number(e.target.value))} />
-      </div>
-      <button className="btn btn-primary" disabled={busy || !url.trim()}
-              onClick={() => { onCrawl(url, limit); setUrl(""); }}>
-        {busy ? "Crawling…" : "Crawl"}
-      </button>
     </div>
   );
 }

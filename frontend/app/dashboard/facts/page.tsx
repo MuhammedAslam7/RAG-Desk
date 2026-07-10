@@ -1,4 +1,5 @@
 import FactsManager from "@/components/facts-manager";
-export default function Page() {
+
+export default function FactsPage() {
   return <FactsManager />;
 }
