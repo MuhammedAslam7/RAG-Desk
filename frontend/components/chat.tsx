@@ -1,75 +1,41 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Loader2, Plus } from "lucide-react";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
+import { Send, Loader2 } from "lucide-react";
+import { useChat } from "@/hooks/use-chat";
 
 export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content:
-        "Hello! I'm your AI assistant powered by RAG Desk. I can answer questions based on your knowledge base and verified facts. How can I help you today?",
-      timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const { messages, input, setInput, send, loading } = useChat();
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const hasScrolledOnce = useRef(false);
 
   useEffect(() => {
-    // Auto-scroll to bottom
-    if (scrollRef.current) {
-      const scrollElement = scrollRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      );
-      if (scrollElement) {
-        setTimeout(() => {
-          scrollElement.scrollTop = scrollElement.scrollHeight;
-        }, 0);
-      }
-    }
+    if (messages.length === 0) return;
+    // Instant jump on first load (page refresh), smooth scroll after that.
+    bottomRef.current?.scrollIntoView({
+      behavior: hasScrolledOnce.current ? "smooth" : "auto",
+    });
+    hasScrolledOnce.current = true;
   }, [messages]);
+
+  // Focus the input on initial mount, and again whenever a send finishes
+  // (loading flips true -> false). Can't focus while disabled during loading.
+  useEffect(() => {
+    if (!loading) {
+      inputRef.current?.focus();
+    }
+  }, [loading]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content:
-          "This is a response from your AI assistant. In production, this would be powered by your backend API with RAG capabilities.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1000);
+    if (!input.trim() || loading) return;
+    await send();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -90,20 +56,29 @@ export default function Chat() {
               Powered by your knowledge base
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 border-border hover:bg-secondary"
-          >
-            <Plus className="h-4 w-4" />
-            New Chat
-          </Button>
         </div>
       </div>
 
       {/* Messages Area */}
-      <ScrollArea ref={scrollRef} className="flex-1 px-6 py-6">
+      <ScrollArea className="flex-1 min-h-0 px-6 py-6">
         <div className="max-w-4xl mx-auto space-y-4 pb-4">
+          {messages.length === 0 && (
+            <div className="flex gap-3 justify-start">
+              <Avatar className="h-8 w-8 flex-shrink-0 mt-0.5">
+                <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary to-primary/70 rounded-full">
+                  <span className="text-xs font-bold text-white">AI</span>
+                </div>
+              </Avatar>
+              <Card className="bg-card border border-border text-foreground px-4 py-3 rounded-lg">
+                <p className="text-sm leading-relaxed">
+                  Hello! I&apos;m your AI assistant powered by RAG Desk. I can
+                  answer questions based on your knowledge base and verified
+                  facts. How can I help you today?
+                </p>
+              </Card>
+            </div>
+          )}
+
           {messages.map((message) => (
             <div
               key={message.id}
@@ -131,22 +106,19 @@ export default function Chat() {
                       : "bg-card border border-border text-foreground"
                   }`}
                 >
-                  <p className="text-sm leading-relaxed break-words">
-                    {message.content}
+                  <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                    {message.content ||
+                      (message.role === "assistant" && loading ? "…" : "")}
                   </p>
                 </Card>
-                <span
-                  className={`text-xs ${
-                    message.role === "user"
-                      ? "text-muted-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                {message.createdAt && (
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(message.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                )}
               </div>
 
               {message.role === "user" && (
@@ -158,22 +130,7 @@ export default function Chat() {
               )}
             </div>
           ))}
-
-          {isLoading && (
-            <div className="flex gap-3 justify-start">
-              <Avatar className="h-8 w-8 flex-shrink-0 mt-0.5">
-                <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary to-primary/70 rounded-full">
-                  <span className="text-xs font-bold text-white">AI</span>
-                </div>
-              </Avatar>
-              <Card className="bg-card border border-border px-4 py-3 rounded-lg flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">
-                  Thinking...
-                </span>
-              </Card>
-            </div>
-          )}
+          <div ref={bottomRef} />
         </div>
       </ScrollArea>
 
@@ -184,20 +141,21 @@ export default function Chat() {
           className="max-w-4xl mx-auto flex gap-3"
         >
           <Input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask a question about your knowledge base..."
-            disabled={isLoading}
+            disabled={loading}
             className="bg-input border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
           />
           <Button
             type="submit"
-            disabled={isLoading || !input.trim()}
+            disabled={loading || !input.trim()}
             size="icon"
             className="bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0"
           >
-            {isLoading ? (
+            {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Send className="h-4 w-4" />

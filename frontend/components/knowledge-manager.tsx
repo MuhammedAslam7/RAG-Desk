@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Upload,
   FileText,
@@ -18,6 +17,7 @@ import {
   Loader2,
   Plus,
 } from "lucide-react";
+import { useKnowledge } from "@/hooks/use-knowledge";
 
 type Method = "upload" | "paste" | "faq" | "faqcsv" | "crawl";
 
@@ -29,61 +29,47 @@ const METHODS: { id: Method; label: string; hint: string; icon: any }[] = [
   { id: "crawl", label: "Crawl website", hint: "Fetch pages", icon: Globe },
 ];
 
-interface KnowledgeSource {
-  id: string;
-  title: string;
-  type: string;
-  status: "success" | "processing" | "error";
-  timestamp: Date;
-  size?: number;
-}
-
 export default function KnowledgeManager() {
+  const { sources, busy, addText, addFaq, crawl, upload, importFaqCsv, remove } =
+    useKnowledge();
   const [method, setMethod] = useState<Method>("upload");
-  const [sources, setSources] = useState<KnowledgeSource[]>([
-    {
-      id: "1",
-      title: "Product Documentation",
-      type: "PDF",
-      status: "success",
-      timestamp: new Date(Date.now() - 86400000),
-      size: 2.5,
-    },
-    {
-      id: "2",
-      title: "FAQ Export",
-      type: "CSV",
-      status: "success",
-      timestamp: new Date(Date.now() - 172800000),
-      size: 0.5,
-    },
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    url: "",
-  });
+  const [formData, setFormData] = useState({ title: "", content: "", url: "" });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAdd = async () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      const newSource: KnowledgeSource = {
-        id: Date.now().toString(),
-        title: formData.title || `New ${method}`,
-        type: method.toUpperCase(),
-        status: "success",
-        timestamp: new Date(),
-        size: Math.random() * 10,
-      };
-      setSources((prev) => [newSource, ...prev]);
-      setFormData({ title: "", content: "", url: "" });
-      setIsLoading(false);
-    }, 1500);
+  const resetForm = () => setFormData({ title: "", content: "", url: "" });
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await upload(file, formData.title || undefined);
+    resetForm();
+    e.target.value = "";
   };
 
-  const handleRemove = (id: string) => {
-    setSources((prev) => prev.filter((s) => s.id !== id));
+  const handleCsvSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await importFaqCsv(file);
+    e.target.value = "";
+  };
+
+  const handleAddText = async () => {
+    if (!formData.content.trim()) return;
+    await addText(formData.title || "Untitled", formData.content);
+    resetForm();
+  };
+
+  const handleAddFaq = async () => {
+    if (!formData.title.trim() || !formData.content.trim()) return;
+    await addFaq(formData.title, formData.content);
+    resetForm();
+  };
+
+  const handleCrawl = async () => {
+    if (!formData.url.trim()) return;
+    await crawl(formData.url);
+    resetForm();
   };
 
   return (
@@ -138,15 +124,29 @@ export default function KnowledgeManager() {
 
                 {method === "upload" && (
                   <div className="space-y-4">
-                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                      <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx,.csv,.txt,.md,.markdown"
+                      className="hidden"
+                      onChange={handleFileSelected}
+                    />
+                    <div
+                      onClick={() => !busy && fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    >
+                      {busy ? (
+                        <Loader2 className="h-12 w-12 text-primary mx-auto mb-3 animate-spin" />
+                      ) : (
+                        <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      )}
                       <p className="text-sm font-medium text-foreground mb-1">
                         Drag and drop files here
                       </p>
                       <p className="text-xs text-muted-foreground mb-4">
                         or click to browse (PDF, DOCX, CSV, TXT)
                       </p>
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" disabled={busy}>
                         Choose Files
                       </Button>
                     </div>
@@ -172,11 +172,11 @@ export default function KnowledgeManager() {
                       className="bg-input border-border min-h-40"
                     />
                     <Button
-                      onClick={handleAdd}
-                      disabled={!formData.content.trim() || isLoading}
+                      onClick={handleAddText}
+                      disabled={!formData.content.trim() || busy}
                       className="gap-2 bg-primary hover:bg-primary/90"
                     >
-                      {isLoading ? (
+                      {busy ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Plus className="h-4 w-4" />
@@ -205,11 +205,11 @@ export default function KnowledgeManager() {
                       className="bg-input border-border min-h-32"
                     />
                     <Button
-                      onClick={handleAdd}
-                      disabled={!formData.content.trim() || !formData.title.trim() || isLoading}
+                      onClick={handleAddFaq}
+                      disabled={!formData.content.trim() || !formData.title.trim() || busy}
                       className="gap-2 bg-primary hover:bg-primary/90"
                     >
-                      {isLoading ? (
+                      {busy ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Plus className="h-4 w-4" />
@@ -221,15 +221,29 @@ export default function KnowledgeManager() {
 
                 {method === "faqcsv" && (
                   <div className="space-y-4">
-                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                      <Grid3x3 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <input
+                      ref={csvInputRef}
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={handleCsvSelected}
+                    />
+                    <div
+                      onClick={() => !busy && csvInputRef.current?.click()}
+                      className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    >
+                      {busy ? (
+                        <Loader2 className="h-12 w-12 text-primary mx-auto mb-3 animate-spin" />
+                      ) : (
+                        <Grid3x3 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      )}
                       <p className="text-sm font-medium text-foreground mb-1">
                         Upload CSV file
                       </p>
                       <p className="text-xs text-muted-foreground mb-4">
                         Format: question, answer (one per row)
                       </p>
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" disabled={busy}>
                         Choose CSV
                       </Button>
                     </div>
@@ -247,11 +261,11 @@ export default function KnowledgeManager() {
                       className="bg-input border-border"
                     />
                     <Button
-                      onClick={handleAdd}
-                      disabled={!formData.url.trim() || isLoading}
+                      onClick={handleCrawl}
+                      disabled={!formData.url.trim() || busy}
                       className="gap-2 bg-primary hover:bg-primary/90"
                     >
-                      {isLoading ? (
+                      {busy ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Plus className="h-4 w-4" />
@@ -281,41 +295,26 @@ export default function KnowledgeManager() {
                         className="border-border bg-card/50 p-4 flex items-center justify-between hover:bg-card transition-colors"
                       >
                         <div className="flex items-center gap-4 flex-1">
-                          <div
-                            className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                              source.status === "success"
-                                ? "bg-primary/10"
-                                : source.status === "processing"
-                                ? "bg-yellow-500/10"
-                                : "bg-destructive/10"
-                            }`}
-                          >
-                            {source.status === "success" && (
-                              <Check className="h-5 w-5 text-primary" />
-                            )}
-                            {source.status === "processing" && (
-                              <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />
-                            )}
+                          <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-primary/10">
+                            <Check className="h-5 w-5 text-primary" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-foreground truncate">
                               {source.title}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              {source.timestamp.toLocaleDateString()} •{" "}
-                              <Badge
-                                variant="secondary"
-                                className="text-xs font-medium"
-                              >
-                                {source.type}
+                            <p className="text-xs text-muted-foreground flex items-center gap-2">
+                              {new Date(source.createdAt).toLocaleDateString()} •{" "}
+                              <Badge variant="secondary" className="text-xs font-medium">
+                                {source.type.toUpperCase()}
                               </Badge>
+                              <span>{source.chunkCount} chunks</span>
                             </p>
                           </div>
                         </div>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemove(source.id)}
+                          onClick={() => remove(source.id)}
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="h-4 w-4" />

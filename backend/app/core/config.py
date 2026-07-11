@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     CLERK_JWKS_URL: str = ""
     FIRECRAWL_API_KEY: str = ""
     FRONTEND_ORIGIN: str = "http://localhost:3000"
+    # CLERK_ISSUER: str = ""    
 
     # Embedding config - must match what stored the vectors
     EMBED_MODEL: str = "gemini-embedding-001"

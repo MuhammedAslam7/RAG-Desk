@@ -7,8 +7,6 @@ async function getToken(): Promise<string | null> {
     ? await clerk.session.getToken()
     : null;
 
-  console.log("Token:", token);
-
   return token;
 }
 export async function apiFetch(path: string, opts: RequestInit = {}) {

@@ -41,3 +41,25 @@ async def get_current_clerk_id(
         return claims["sub"]
     except Exception:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+
+
+# async def get_current_clerk_id(
+#     creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+# ) -> str:
+#     """Verify a Clerk session JWT; return the clerk user id (`sub`)."""
+#     if creds is None:
+#         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing bearer token")
+#     try:
+#         jwks = await _get_jwks()
+#         claims = jwt.decode(
+#             creds.credentials, jwks, algorithms=["RS256"],
+#             issuer=settings.CLERK_ISSUER,
+#             options={"verify_aud": False},
+#         )
+#         return claims["sub"]
+#     except HTTPException:
+#         raise
+#     except Exception as e:  # noqa: BLE001
+#         # Distinguish "bad token" from "we couldn't even check" in your logs.
+#         print("Auth error:", e)
+#         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")

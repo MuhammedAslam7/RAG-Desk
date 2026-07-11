@@ -8,7 +8,7 @@ app = FastAPI(title="AI Support Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_ORIGIN, "*"],  # tighten in prod
+    allow_origins=[settings.FRONTEND_ORIGIN],  # tighten in prod
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
