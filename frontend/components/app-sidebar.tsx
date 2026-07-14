@@ -51,7 +51,7 @@ export function AppSidebar() {
         }`}
       >
         {/* Header */}
-        <div className="border-b border-border px-4 py-4 flex-shrink-0">
+        <div className="px-4 py-4 flex-shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/60 flex-shrink-0">
@@ -130,7 +130,7 @@ export function AppSidebar() {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-border px-4 py-4 flex-shrink-0">
+        <div className="px-4 py-4 flex-shrink-0">
           {isOpen ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">

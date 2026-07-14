@@ -48,7 +48,7 @@ export default function Chat() {
   return (
     <div className="flex flex-col h-full w-full bg-background">
       {/* Chat Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm px-6 py-4 flex-shrink-0">
+      {/* <div className="border-b border-border bg-card/50 backdrop-blur-sm px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Chat Assistant</h1>
@@ -57,7 +57,7 @@ export default function Chat() {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Messages Area */}
       <ScrollArea className="flex-1 min-h-0 px-6 py-6">
