@@ -19,3 +19,22 @@ export interface KnowledgeSource {
   chunkCount: number;
   createdAt: string;
 }
+
+export interface OrganizationSettings {
+  websiteUrl: string | null;
+  fallbackEmail: string | null;
+  language: string;
+  allowedDomains: string | null;
+  widgetGreeting: string | null;
+  widgetColor: string | null;
+  widgetPosition: string;
+}
+
+export interface OrganizationDetails {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  createdAt: string;
+  settings: OrganizationSettings;
+}

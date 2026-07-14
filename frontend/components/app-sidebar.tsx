@@ -10,6 +10,7 @@ import {
   MessageSquare,
   BookOpen,
   Lightbulb,
+  Settings,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -32,11 +33,16 @@ const menuItems = [
     icon: Lightbulb,
     href: "/dashboard/facts",
   },
-  {
-    label: "Chat",
-    icon: MessageSquare,
-    href: "/",
-  },
+ {
+  label: "Chat",
+  icon: MessageSquare,
+  href: "/dashboard/chat",
+},
+{
+  label: "Settings",
+  icon: Settings,
+  href: "/dashboard/settings",
+},
 ];
 
 export function AppSidebar() {
@@ -96,10 +102,8 @@ export function AppSidebar() {
           <nav className="space-y-2">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(item.href));
-
+             const isActive =
+  pathname === item.href || pathname.startsWith(item.href + "/");
               const navItem = (
                 <Link
                   key={item.href}

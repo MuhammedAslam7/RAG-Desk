@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import Organization, User
+from app.models import Organization, OrganizationSettings, User
 
 router = APIRouter()
 
@@ -52,6 +53,9 @@ async def onboard(
     org = Organization(name=body.org_name.strip(), slug=slug)
     db.add(org)
     await db.flush()
+
+    # create a default settings row alongside the org
+    db.add(OrganizationSettings(organizationId=org.id))
 
     user.organizationId = org.id
     user.role = "owner"
