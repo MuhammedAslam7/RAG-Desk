@@ -1,9 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { apiFetch, apiJson } from "@/lib/api-client";
 import { OrganizationDetails, OrganizationSettings } from "@/types";
 
 export function useOrgSettings() {
+  const { isLoaded, isSignedIn } = useAuth();
   const [org, setOrg] = useState<OrganizationDetails | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -17,8 +19,9 @@ export function useOrgSettings() {
   }, []);
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     refresh().catch(console.error);
-  }, [refresh]);
+  }, [isLoaded, isSignedIn, refresh]);
 
   const update = async (patch: Partial<OrganizationSettings>) => {
     await apiFetch("/api/v1/settings", {

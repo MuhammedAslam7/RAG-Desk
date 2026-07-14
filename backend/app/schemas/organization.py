@@ -1,8 +1,10 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class OrganizationSettingsOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     websiteUrl: str | None
     fallbackEmail: str | None
     language: str
@@ -23,6 +25,8 @@ class OrganizationSettingsUpdate(BaseModel):
 
 
 class OrganizationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     slug: str

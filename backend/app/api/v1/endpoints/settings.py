@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +19,10 @@ async def _get_settings(db: AsyncSession, org_id: str) -> OrganizationSettings:
         )
     ).scalars().first()
     if settings is None:
-        raise HTTPException(404, "Settings not found")
+        settings = OrganizationSettings(organizationId=org_id)
+        db.add(settings)
+        await db.commit()
+        await db.refresh(settings)
     return settings
 
 

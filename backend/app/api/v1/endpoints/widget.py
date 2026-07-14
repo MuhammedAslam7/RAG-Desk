@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -49,4 +51,32 @@ async def widget_chat(
         if allowed and not any(domain in origin for domain in allowed):
             raise HTTPException(status_code=403, detail="Origin not allowed")
 
-    # ... rest of the function unchanged (ranked chunks, facts, system_prompt, event_stream)
+    ranked = rank_by_relevance_and_recency(
+        await get_relevant_chunks(db, body.message, org.id)
+    )
+
+    facts = await get_active_facts(db, org.id)
+    system_prompt = build_system_prompt(ranked, facts)
+
+    messages = [
+        {
+            "role": "user",
+            "parts": [
+                {
+                    "type": "text",
+                    "text": body.message,
+                }
+            ],
+        }
+    ]
+
+    async def event_stream():
+        async for token in stream_answer(system_prompt, messages):
+            yield f"data: {json.dumps({'text': token})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+    )

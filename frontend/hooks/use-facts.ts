@@ -1,9 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { apiFetch, apiJson } from "@/lib/api-client";
 import { Fact } from "@/types";
 
 export function useFacts() {
+  const { isLoaded, isSignedIn } = useAuth();
   const [facts, setFacts] = useState<Fact[]>([]);
 
   const refresh = useCallback(async () => {
@@ -11,8 +13,9 @@ export function useFacts() {
   }, []);
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     refresh().catch(console.error);
-  }, [refresh]);
+  }, [isLoaded, isSignedIn, refresh]);
 
   const create = async (subject: string, value: string) => {
     await apiFetch("/api/v1/facts", {

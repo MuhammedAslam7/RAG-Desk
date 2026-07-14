@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { apiFetch, apiJson } from "@/lib/api-client";
 import { KnowledgeSource } from "@/types";
 
@@ -15,6 +16,7 @@ async function authedUpload(path: string, form: FormData) {
 }
 
 export function useKnowledge() {
+  const { isLoaded, isSignedIn } = useAuth();
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -23,8 +25,9 @@ export function useKnowledge() {
   }, []);
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     refresh().catch(console.error);
-  }, [refresh]);
+  }, [isLoaded, isSignedIn, refresh]);
 
   const wrap = async (fn: () => Promise<void>) => {
     setBusy(true);

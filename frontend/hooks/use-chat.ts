@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { apiJson, apiStream } from "@/lib/api-client";
 import { ChatMessage } from "@/types";
 
@@ -9,19 +10,21 @@ interface ChatInit {
 }
 
 export function useChat() {
+  const { isLoaded, isSignedIn } = useAuth();
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     apiJson<ChatInit>("/api/v1/chat")
       .then((data) => {
         setChatId(data.chatId);
         setMessages(data.messages);
       })
       .catch(console.error);
-  }, []);
+  }, [isLoaded, isSignedIn]);
 
   const send = useCallback(async () => {
     if (!input.trim() || !chatId) return;
