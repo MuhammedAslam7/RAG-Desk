@@ -15,6 +15,7 @@ from app.services.ai.llm import stream_answer
 from app.services.facts.service import get_active_facts
 from app.services.rag.prompt import build_system_prompt
 from app.services.rag.retrieval import get_relevant_chunks, rank_by_relevance_and_recency
+from app.schemas.organization import WidgetConfigOut
 
 router = APIRouter()
 
@@ -106,4 +107,29 @@ async def widget_chat(
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
+    )
+
+
+@router.get("/config", response_model=WidgetConfigOut)
+async def widget_config(org: str, db: AsyncSession = Depends(get_db)):
+    organization = (
+        await db.execute(select(Organization).where(Organization.slug == org))
+    ).scalars().first()
+    if organization is None:
+        raise HTTPException(404, "Unknown organization")
+
+    settings = (
+        await db.execute(
+            select(OrganizationSettings).where(
+                OrganizationSettings.organizationId == organization.id
+            )
+        )
+    ).scalars().first()
+
+    return WidgetConfigOut(
+        orgName=organization.name,
+        status=organization.status,
+        greeting=settings.widgetGreeting if settings else None,
+        color=settings.widgetColor if settings else None,
+        position=settings.widgetPosition if settings else "bottom-right",
     )

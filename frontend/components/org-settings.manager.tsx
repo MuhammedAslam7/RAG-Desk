@@ -67,7 +67,8 @@ export default function OrgSettingsManager() {
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-8 py-8 space-y-8">
-            <EmbedSnippet slug={org.slug} />
+          {/* frontend/components/org-settings.manager.tsx — update the call site */}
+          <EmbedSnippet slug={org.slug} position={org.settings.widgetPosition || "bottom-right"} />
           {/* Widget appearance */}
           <Card className="border-border bg-card p-6">
             <div className="flex items-center gap-2 mb-6">
