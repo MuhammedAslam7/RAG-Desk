@@ -56,3 +56,30 @@ export interface WidgetSessionDetail {
   createdAt: string;
   messages: { sender: string; content: string; createdAt: string }[];
 }
+
+
+// frontend/types/index.ts — add
+export interface TeamMember {
+  id: string;
+  email: string | null;
+  role: string;
+  createdAt: string;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
+  expiresAt: string;
+  inviteUrl?: string;
+}
+
+export interface InvitePreview {
+  valid: boolean;
+  orgName?: string;
+  role?: string;
+  email?: string;
+  reason?: string;
+}

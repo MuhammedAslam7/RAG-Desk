@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  Users2,
 } from "lucide-react";
 import { useSidebar } from "@/lib/sidebar-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -23,7 +24,8 @@ const menuItems = [
   { label: "Knowledge", icon: BookOpen, href: "/dashboard/knowledge" },
   { label: "Facts", icon: Lightbulb, href: "/dashboard/facts" },
   { label: "Chat", icon: MessageSquare, href: "/dashboard/chat" },
-  { label: "Conversations", icon: Users, href: "/dashboard/conversations" }, // new
+  { label: "Conversations", icon: Users, href: "/dashboard/conversations" },
+  { label: "Team", icon: Users2, href: "/dashboard/team" }, // new
   { label: "Settings", icon: Settings, href: "/dashboard/settings" },
 ];
 

@@ -1,3 +1,4 @@
+# backend/app/api/deps.py
 from fastapi import Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,3 +29,12 @@ async def require_org(user: User = Depends(get_current_user)) -> User:
     if user.organizationId is None:
         raise HTTPException(409, "No organization. Complete onboarding first.")
     return user
+
+
+def require_role(*roles: str):
+    """Gate for routes that require the user to hold one of the given roles."""
+    async def _dep(user: User = Depends(require_org)) -> User:
+        if user.role not in roles:
+            raise HTTPException(403, "You don't have permission to do this.")
+        return user
+    return _dep

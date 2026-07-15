@@ -1,3 +1,4 @@
+# backend/app/models/user.py
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,6 +18,7 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=cuid)
     clerkId: Mapped[str] = mapped_column(String, unique=True)
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
     role: Mapped[str] = mapped_column(String, default="owner")
     organizationId: Mapped[str | None] = mapped_column(
         ForeignKey("Organization.id"), nullable=True

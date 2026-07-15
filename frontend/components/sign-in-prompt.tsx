@@ -1,16 +1,34 @@
+// frontend/components/sign-in-prompt.tsx
 "use client";
+import { SignIn, SignUp } from "@clerk/nextjs";
+import { useState } from "react";
 
-import { SignInButton } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+export default function SignInPrompt({ token }: { token: string }) {
+  const [mode, setMode] = useState<"sign-up" | "sign-in">("sign-up");
+  const returnUrl = `/invite/${token}`;
 
-export default function SignInPrompt() {
   return (
-    <SignInButton mode="modal">
-      <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6 py-6 h-auto text-base">
-        Sign In
-        <ArrowRight className="h-4 w-4" />
-      </Button>
-    </SignInButton>
+    <div className="mt-4">
+      {mode === "sign-up" ? (
+        <SignUp
+          routing="hash"
+          forceRedirectUrl={returnUrl}
+          fallbackRedirectUrl={returnUrl}
+          signInUrl={`/invite/${token}`}
+        />
+      ) : (
+        <SignIn
+          routing="hash"
+          forceRedirectUrl={returnUrl}
+          fallbackRedirectUrl={returnUrl}
+        />
+      )}
+      <button
+        onClick={() => setMode(mode === "sign-up" ? "sign-in" : "sign-up")}
+        className="text-xs text-muted-foreground mt-2 underline"
+      >
+        {mode === "sign-up" ? "Already have an account? Sign in" : "Need an account? Sign up"}
+      </button>
+    </div>
   );
 }

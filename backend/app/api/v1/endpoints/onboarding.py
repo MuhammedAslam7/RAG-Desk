@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import Organization, OrganizationSettings, User
+from app.schemas.team import SyncProfileRequest
+from app.repositories import user_repo
 
 router = APIRouter()
 
@@ -60,3 +62,12 @@ async def onboard(
     user.role = "owner"
     await db.commit()
     return {"id": org.id, "slug": org.slug, "name": org.name}
+
+@router.post("/sync")
+async def sync_profile(
+    body: SyncProfileRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await user_repo.update_email(db, user, body.email.lower().strip())
+    return {"success": True}
