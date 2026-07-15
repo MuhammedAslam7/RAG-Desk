@@ -33,3 +33,11 @@ class OrganizationOut(BaseModel):
     status: str
     createdAt: datetime
     settings: OrganizationSettingsOut
+
+
+class WidgetConfigOut(BaseModel):
+    orgName: str
+    status: str
+    greeting: str | None
+    color: str | None
+    position: str

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, Globe, MessageSquare, Palette } from "lucide-react";
 import { useOrgSettings } from "@/hooks/use-org-settings";
 import { OrganizationSettings } from "@/types";
+import EmbedSnippet from "./embed-snippet";
 
 const POSITIONS = [
   { value: "bottom-right", label: "Bottom right" },
@@ -66,6 +67,7 @@ export default function OrgSettingsManager() {
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-8 py-8 space-y-8">
+            <EmbedSnippet slug={org.slug} />
           {/* Widget appearance */}
           <Card className="border-border bg-card p-6">
             <div className="flex items-center gap-2 mb-6">

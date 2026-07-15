@@ -1,3 +1,4 @@
+# backend/app/repositories/chat_repo.py
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,11 +8,35 @@ from app.models import Chat, Message
 async def get_or_create_chat(db: AsyncSession, user_id: str, org_id: str) -> Chat:
     chat = (
         await db.execute(
-            select(Chat).where(Chat.userId == user_id, Chat.organizationId == org_id)
+            select(Chat).where(
+                Chat.userId == user_id,
+                Chat.organizationId == org_id,
+                Chat.source == "dashboard",
+            )
         )
     ).scalars().first()
     if chat is None:
-        chat = Chat(userId=user_id, organizationId=org_id)
+        chat = Chat(userId=user_id, organizationId=org_id, source="dashboard")
+        db.add(chat)
+        await db.commit()
+        await db.refresh(chat)
+    return chat
+
+
+async def get_or_create_widget_chat(
+    db: AsyncSession, org_id: str, visitor_id: str
+) -> Chat:
+    chat = (
+        await db.execute(
+            select(Chat).where(
+                Chat.organizationId == org_id,
+                Chat.visitorId == visitor_id,
+                Chat.source == "widget",
+            )
+        )
+    ).scalars().first()
+    if chat is None:
+        chat = Chat(organizationId=org_id, visitorId=visitor_id, source="widget")
         db.add(chat)
         await db.commit()
         await db.refresh(chat)
@@ -43,3 +68,15 @@ async def add_message(db: AsyncSession, chat_id: str, sender: str, content: str)
     await db.commit()
     await db.refresh(msg)
     return msg
+
+
+async def list_widget_chats(db: AsyncSession, org_id: str) -> list[Chat]:
+    return list(
+        (
+            await db.execute(
+                select(Chat)
+                .where(Chat.organizationId == org_id, Chat.source == "widget")
+                .order_by(Chat.createdAt.desc())
+            )
+        ).scalars().all()
+    )

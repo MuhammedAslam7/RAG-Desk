@@ -1,6 +1,7 @@
+# backend/app/api/v1/endpoints/chat.py
 import json
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,11 +26,8 @@ async def get_chat(
     user: User = Depends(require_org),
     db: AsyncSession = Depends(get_db),
 ):
-    chat = await chat_repo.get_or_create_chat(
-        db, user.id, user.organizationId
-    )
+    chat = await chat_repo.get_or_create_chat(db, user.id, user.organizationId)
     msgs = await chat_repo.list_messages(db, chat.id)
-
     return ChatInitOut(
         chatId=chat.id,
         messages=[
@@ -50,12 +48,7 @@ async def post_chat(
     user: User = Depends(require_org),
     db: AsyncSession = Depends(get_db),
 ):
-    chat = await chat_repo.get_chat_for_org(
-        db,
-        body.chatId,
-        user.organizationId,
-    )
-
+    chat = await chat_repo.get_chat_for_org(db, body.chatId, user.organizationId)
     if chat is None:
         return StreamingResponse(
             iter(["data: [ERROR] chat not found\n\n"]),
@@ -64,27 +57,16 @@ async def post_chat(
         )
 
     messages = [m.model_dump() for m in body.messages]
-
     last = messages[-1] if messages else {"parts": []}
-
     user_text = next(
-        (
-            p["text"]
-            for p in last.get("parts", [])
-            if p.get("type") == "text"
-        ),
-        "",
+        (p["text"] for p in last.get("parts", []) if p.get("type") == "text"), ""
     )
 
     await chat_repo.add_message(db, chat.id, "user", user_text)
 
     ranked = []
     try:
-        candidates = await get_relevant_chunks(
-            db,
-            user_text,
-            user.organizationId,
-        )
+        candidates = await get_relevant_chunks(db, user_text, user.organizationId)
         ranked = rank_by_relevance_and_recency(candidates)
     except Exception as e:  # noqa: BLE001
         print("RAG error:", e)
@@ -99,18 +81,57 @@ async def post_chat(
 
     async def event_stream():
         collected = []
-
         async for token in stream_answer(system_prompt, messages):
             collected.append(token)
             yield f"data: {json.dumps({'text': token})}\n\n"
-
         full = "".join(collected)
-
         await chat_repo.add_message(db, chat.id, "ai", full)
-
         yield "data: [DONE]\n\n"
 
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-    )
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# ---- Widget conversation visibility (dashboard-side) ----
+
+@router.get("/widget-sessions")
+async def list_widget_sessions(
+    user: User = Depends(require_org),
+    db: AsyncSession = Depends(get_db),
+):
+    chats = await chat_repo.list_widget_chats(db, user.organizationId)
+    result = []
+    for c in chats:
+        msgs = await chat_repo.list_messages(db, c.id)
+        last = msgs[-1] if msgs else None
+        result.append(
+            {
+                "chatId": c.id,
+                "visitorId": c.visitorId,
+                "createdAt": c.createdAt,
+                "messageCount": len(msgs),
+                "lastMessage": last.content if last else None,
+                "lastSender": last.sender if last else None,
+            }
+        )
+    return result
+
+
+@router.get("/widget-sessions/{chat_id}")
+async def get_widget_session(
+    chat_id: str,
+    user: User = Depends(require_org),
+    db: AsyncSession = Depends(get_db),
+):
+    chat = await chat_repo.get_chat_for_org(db, chat_id, user.organizationId)
+    if chat is None or chat.source != "widget":
+        raise HTTPException(404, "Conversation not found")
+    msgs = await chat_repo.list_messages(db, chat.id)
+    return {
+        "chatId": chat.id,
+        "visitorId": chat.visitorId,
+        "createdAt": chat.createdAt,
+        "messages": [
+            {"sender": m.sender, "content": m.content, "createdAt": m.createdAt}
+            for m in msgs
+        ],
+    }

@@ -38,3 +38,21 @@ export interface OrganizationDetails {
   createdAt: string;
   settings: OrganizationSettings;
 }
+
+
+// frontend/types/index.ts — add these
+export interface WidgetSession {
+  chatId: string;
+  visitorId: string;
+  createdAt: string;
+  messageCount: number;
+  lastMessage: string | null;
+  lastSender: string | null;
+}
+
+export interface WidgetSessionDetail {
+  chatId: string;
+  visitorId: string;
+  createdAt: string;
+  messages: { sender: string; content: string; createdAt: string }[];
+}
