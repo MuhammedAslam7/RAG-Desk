@@ -3,24 +3,22 @@
 import { SignIn, SignUp } from "@clerk/nextjs";
 import { useState } from "react";
 
-export default function SignInPrompt({ token }: { token: string }) {
+export default function SignInPrompt({ token }: { token?: string }) {
   const [mode, setMode] = useState<"sign-up" | "sign-in">("sign-up");
-  const returnUrl = `/invite/${token}`;
+  const returnUrl = token ? `/invite/${token}` : undefined;
 
   return (
     <div className="mt-4">
       {mode === "sign-up" ? (
         <SignUp
           routing="hash"
-          forceRedirectUrl={returnUrl}
-          fallbackRedirectUrl={returnUrl}
-          signInUrl={`/invite/${token}`}
+          {...(returnUrl ? { forceRedirectUrl: returnUrl, fallbackRedirectUrl: returnUrl } : {})}
+          {...(token ? { signInUrl: `/invite/${token}` } : {})}
         />
       ) : (
         <SignIn
           routing="hash"
-          forceRedirectUrl={returnUrl}
-          fallbackRedirectUrl={returnUrl}
+          {...(returnUrl ? { forceRedirectUrl: returnUrl, fallbackRedirectUrl: returnUrl } : {})}
         />
       )}
       <button
