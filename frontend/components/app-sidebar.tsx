@@ -15,17 +15,20 @@ import {
   ChevronRight,
   Users,
   Users2,
+  Bell,
+  CreditCard,
 } from "lucide-react";
 import { useSidebar } from "@/lib/sidebar-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
 const menuItems = [
-  { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Chat", icon: MessageSquare, href: "/dashboard/chat" },
+  { label: "Live Conversations", icon: Users, href: "/dashboard/conversations" },
   { label: "Knowledge", icon: BookOpen, href: "/dashboard/knowledge" },
   { label: "Facts", icon: Lightbulb, href: "/dashboard/facts" },
-  { label: "Chat", icon: MessageSquare, href: "/dashboard/chat" },
-  { label: "Conversations", icon: Users, href: "/dashboard/conversations" },
-  { label: "Team", icon: Users2, href: "/dashboard/team" }, // new
+  { label: "Team", icon: Users2, href: "/dashboard/team" },
+  { label: "Notifications", icon: Bell, href: "/dashboard/notifications" },
+  { label: "Billing", icon: CreditCard, href: "/dashboard/billing" },
   { label: "Settings", icon: Settings, href: "/dashboard/settings" },
 ];
 

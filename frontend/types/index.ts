@@ -83,3 +83,49 @@ export interface InvitePreview {
   email?: string;
   reason?: string;
 }
+
+
+// frontend/types/index.ts — dashboard
+export interface DashboardKpis {
+  totalConversations: number;
+  totalVisitors: number;
+  aiResponses: number;
+  knowledgeChunks: number;
+  teamMembers: number;
+  pendingInvitations: number;
+  facts: number;
+}
+
+export interface DashboardRecentConversation {
+  chatId: string;
+  visitorId: string;
+  lastMessage: string | null;
+  lastSender: string | null;
+  createdAt: string;
+}
+
+export interface DashboardRecentSource {
+  id: string;
+  title: string;
+  type: string;
+  createdAt: string;
+}
+
+export interface DashboardWidget {
+  status: string;
+  color: string | null;
+  greeting: string | null;
+  position: string;
+  allowedDomains: string | null;
+}
+
+export interface DashboardSummary {
+  orgName: string;
+  kpis: DashboardKpis;
+  sourcesByType: Record<string, number>;
+  dailyConversations: { date: string; conversations: number }[];
+  lastKnowledgeUpdate: string | null;
+  recentConversations: DashboardRecentConversation[];
+  recentSources: DashboardRecentSource[];
+  widget: DashboardWidget;
+}
