@@ -77,7 +77,23 @@ async def post_chat(
     except Exception as e:  # noqa: BLE001
         print("Fact lookup error:", e)
 
-    system_prompt = build_system_prompt(ranked, facts)
+    from sqlalchemy import select as _select
+    from app.models import OrganizationSettings as _OrgSettings
+    settings = (
+        await db.execute(
+            _select(_OrgSettings).where(_OrgSettings.organizationId == user.organizationId)
+        )
+    ).scalars().first()
+    ai_settings = {
+        "aiName": settings.aiName if settings else "AI Assistant",
+        "aiPersonality": settings.aiPersonality if settings else None,
+        "responseLength": settings.responseLength if settings else "medium",
+        "tone": settings.tone if settings else "friendly",
+        "emojiUsage": settings.emojiUsage if settings else "moderate",
+        "language": settings.language if settings else "en",
+        "showAiDisclaimer": settings.showAiDisclaimer if settings else True,
+    }
+    system_prompt = build_system_prompt(ranked, facts, ai_settings)
 
     async def event_stream():
         collected = []

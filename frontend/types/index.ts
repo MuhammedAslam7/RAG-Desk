@@ -36,6 +36,98 @@ export interface OrganizationSettings {
   font: string;
   showShadow: boolean;
   animation: string;
+
+  botName: string;
+  botAvatarUrl: string | null;
+  companyLogoUrl: string | null;
+  headerBgColor: string | null;
+  headerTextColor: string | null;
+  showOnlineStatus: boolean;
+  statusText: string;
+  showCloseButton: boolean;
+
+  welcomeTitle: string | null;
+  welcomeDescription: string | null;
+  suggestedQuestions: string | null; // newline-separated in the form
+  startChatButtonText: string;
+
+  autoOpenSeconds: number | null;
+  autoOpenOnScroll: boolean;
+  autoOpenOnExitIntent: boolean;
+  minimizeAfterInactivitySeconds: number | null;
+  rememberConversations: boolean;
+  startMinimized: boolean;
+  keepOpenAcrossPages: boolean;
+
+  userBubbleColor: string | null;
+  aiBubbleColor: string | null;
+  messageTextColor: string | null;
+  showTimestamps: boolean;
+  showReadReceipts: boolean;
+  showTypingIndicator: boolean;
+  aiThinkingAnimation: boolean;
+
+  aiName: string;
+  aiPersonality: string | null;
+  responseLength: string;
+  emojiUsage: string;
+  tone: string;
+  showAiDisclaimer: boolean;
+
+  askVisitorName: boolean;
+  askVisitorEmail: boolean;
+  askVisitorPhone: boolean;
+  requireContactFields: boolean;
+  saveVisitorHistory: boolean;
+  allowAnonymousChat: boolean;
+}
+
+export interface WidgetConfig {
+  orgName: string;
+  status: string;
+  color: string | null;
+  position: string;
+  theme: string;
+  widgetWidth: string;
+  widgetHeight: string;
+  borderRadius: string;
+  font: string;
+  showShadow: boolean;
+  animation: string;
+  botName: string;
+  botAvatarUrl: string | null;
+  companyLogoUrl: string | null;
+  headerBgColor: string | null;
+  headerTextColor: string | null;
+  showOnlineStatus: boolean;
+  statusText: string;
+  showCloseButton: boolean;
+  greeting: string | null;
+  welcomeTitle: string | null;
+  welcomeDescription: string | null;
+  suggestedQuestions: string[];
+  startChatButtonText: string;
+  autoOpenSeconds: number | null;
+  autoOpenOnScroll: boolean;
+  autoOpenOnExitIntent: boolean;
+  minimizeAfterInactivitySeconds: number | null;
+  rememberConversations: boolean;
+  startMinimized: boolean;
+  keepOpenAcrossPages: boolean;
+  userBubbleColor: string | null;
+  aiBubbleColor: string | null;
+  messageTextColor: string | null;
+  showTimestamps: boolean;
+  showReadReceipts: boolean;
+  showTypingIndicator: boolean;
+  aiThinkingAnimation: boolean;
+  aiName: string;
+  showAiDisclaimer: boolean;
+  askVisitorName: boolean;
+  askVisitorEmail: boolean;
+  askVisitorPhone: boolean;
+  requireContactFields: boolean;
+  allowAnonymousChat: boolean;
 }
 
 export interface OrganizationDetails {

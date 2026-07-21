@@ -21,6 +21,11 @@ class Chat(Base):
     visitorId: Mapped[str | None] = mapped_column(String, nullable=True)
     source: Mapped[str] = mapped_column(String, default="dashboard")
     organizationId: Mapped[str] = mapped_column(ForeignKey("Organization.id"))
+
+    visitorName: Mapped[str | None] = mapped_column(String, nullable=True)
+    visitorEmail: Mapped[str | None] = mapped_column(String, nullable=True)
+    visitorPhone: Mapped[str | None] = mapped_column(String, nullable=True)
+
     createdAt: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     messages: Mapped[list["Message"]] = relationship(
