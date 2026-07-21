@@ -132,4 +132,11 @@ async def widget_config(org: str, db: AsyncSession = Depends(get_db)):
         greeting=settings.widgetGreeting if settings else None,
         color=settings.widgetColor if settings else None,
         position=settings.widgetPosition if settings else "bottom-right",
+        theme=settings.theme if settings else "auto",
+        widgetWidth=settings.widgetWidth if settings else "medium",
+        widgetHeight=settings.widgetHeight if settings else "medium",
+        borderRadius=settings.borderRadius if settings else "rounded",
+        font=settings.font if settings else "inter",
+        showShadow=settings.showShadow if settings else True,
+        animation=settings.animation if settings else "slide",
     )

@@ -5,7 +5,7 @@ if TYPE_CHECKING:
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -26,6 +26,13 @@ class OrganizationSettings(Base):
     widgetGreeting: Mapped[str | None] = mapped_column(Text, nullable=True)
     widgetColor: Mapped[str | None] = mapped_column(String, nullable=True)
     widgetPosition: Mapped[str] = mapped_column(String, default="bottom-right")
+    theme: Mapped[str] = mapped_column(String, default="auto")          # light | dark | auto
+    widgetWidth: Mapped[str] = mapped_column(String, default="medium")  # small | medium | large
+    widgetHeight: Mapped[str] = mapped_column(String, default="medium") # small | medium | large
+    borderRadius: Mapped[str] = mapped_column(String, default="rounded")# square | rounded | full
+    font: Mapped[str] = mapped_column(String, default="inter")          # inter | roboto | poppins | system
+    showShadow: Mapped[bool] = mapped_column(Boolean, default=True)
+    animation: Mapped[str] = mapped_column(String, default="slide")     # fade | slide | bounce | none
     onboardedAt: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updatedAt: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

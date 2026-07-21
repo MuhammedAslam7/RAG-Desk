@@ -28,6 +28,14 @@ export interface OrganizationSettings {
   widgetGreeting: string | null;
   widgetColor: string | null;
   widgetPosition: string;
+
+  theme: string;
+  widgetWidth: string;
+  widgetHeight: string;
+  borderRadius: string;
+  font: string;
+  showShadow: boolean;
+  animation: string;
 }
 
 export interface OrganizationDetails {

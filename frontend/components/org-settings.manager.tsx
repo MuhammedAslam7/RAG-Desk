@@ -28,6 +28,44 @@ const LANGUAGES = [
   { value: "hi", label: "Hindi" },
 ];
 
+const THEMES = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "auto", label: "Auto (match visitor's device)" },
+];
+
+const WIDTHS = [
+  { value: "small", label: "Small" },
+  { value: "medium", label: "Medium" },
+  { value: "large", label: "Large" },
+];
+
+const HEIGHTS = [
+  { value: "small", label: "Small" },
+  { value: "medium", label: "Medium" },
+  { value: "large", label: "Large" },
+];
+
+const RADII = [
+  { value: "square", label: "Square" },
+  { value: "rounded", label: "Rounded" },
+  { value: "full", label: "Fully rounded" },
+];
+
+const FONTS = [
+  { value: "inter", label: "Inter" },
+  { value: "roboto", label: "Roboto" },
+  { value: "poppins", label: "Poppins" },
+  { value: "system", label: "System font" },
+];
+
+const ANIMATIONS = [
+  { value: "fade", label: "Fade" },
+  { value: "slide", label: "Slide" },
+  { value: "bounce", label: "Bounce" },
+  { value: "none", label: "None" },
+];
+
 const PRESET_COLORS = [
   "#3b82f6", "#0ea5e9", "#06b6d4", "#10b981",
   "#84cc16", "#f59e0b", "#f97316", "#ef4444",
@@ -148,6 +186,37 @@ function ColorPickerField({
   );
 }
 
+function ToggleField({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="w-full h-9 rounded-md border border-border bg-input/20 px-3 flex items-center justify-between text-sm text-foreground hover:border-primary/50 transition-colors"
+    >
+      <span>{label}</span>
+      <span
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+          checked ? "bg-primary" : "bg-muted"
+        }`}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+            checked ? "translate-x-4.5" : "translate-x-1"
+          }`}
+        />
+      </span>
+    </button>
+  );
+}
+
 export default function OrgSettingsManager() {
   const { org, loading, update } = useOrgSettings();
   const [form, setForm] = useState<Partial<OrganizationSettings>>({});
@@ -203,70 +272,177 @@ export default function OrgSettingsManager() {
           {/* Two cards side by side on large screens */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             {/* Widget appearance */}
-            <Card className="border-border bg-card p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Palette className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">
-                  Widget Appearance
-                </h2>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Greeting message
-                  </label>
-                  <Textarea
-                    placeholder="Hello! How can I help you today?"
-                    value={form.widgetGreeting ?? ""}
-                    onChange={(e) => handleChange("widgetGreeting", e.target.value)}
-                    className="bg-input border-border"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Accent color
-                    </label>
-                    <ColorPickerField
-                      value={form.widgetColor ?? "#3b82f6"}
-                      onChange={(v) => handleChange("widgetColor", v)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Widget position
-                    </label>
-                    <select
-                      value={form.widgetPosition ?? "bottom-right"}
-                      onChange={(e) => handleChange("widgetPosition", e.target.value)}
-                      className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
-                    >
-                      {POSITIONS.map((p) => (
-                        <option key={p.value} value={p.value}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Response language
-                  </label>
-                  <select
-                    value={form.language ?? "en"}
-                    onChange={(e) => handleChange("language", e.target.value)}
-                    className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
-                  >
-                    {LANGUAGES.map((l) => (
-                      <option key={l.value} value={l.value}>
-                        {l.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </Card>
+            {/* Widget appearance */}
+<Card className="border-border bg-card p-6 lg:col-span-2">
+  <div className="flex items-center gap-2 mb-6">
+    <Palette className="h-4 w-4 text-primary" />
+    <h2 className="text-lg font-semibold text-foreground">
+      Widget Appearance
+    </h2>
+  </div>
+  <div className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium text-foreground mb-2">
+        Greeting message
+      </label>
+      <Textarea
+        placeholder="Hello! How can I help you today?"
+        value={form.widgetGreeting ?? ""}
+        onChange={(e) => handleChange("widgetGreeting", e.target.value)}
+        className="bg-input border-border"
+      />
+    </div>
+
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Theme
+        </label>
+        <select
+          value={form.theme ?? "auto"}
+          onChange={(e) => handleChange("theme", e.target.value)}
+          className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
+        >
+          {THEMES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Accent color
+        </label>
+        <ColorPickerField
+          value={form.widgetColor ?? "#3b82f6"}
+          onChange={(v) => handleChange("widgetColor", v)}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Widget position
+        </label>
+        <select
+          value={form.widgetPosition ?? "bottom-right"}
+          onChange={(e) => handleChange("widgetPosition", e.target.value)}
+          className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
+        >
+          {POSITIONS.map((p) => (
+            <option key={p.value} value={p.value}>{p.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Chat window width
+        </label>
+        <select
+          value={form.widgetWidth ?? "medium"}
+          onChange={(e) => handleChange("widgetWidth", e.target.value)}
+          className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
+        >
+          {WIDTHS.map((w) => (
+            <option key={w.value} value={w.value}>{w.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Chat window height
+        </label>
+        <select
+          value={form.widgetHeight ?? "medium"}
+          onChange={(e) => handleChange("widgetHeight", e.target.value)}
+          className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
+        >
+          {HEIGHTS.map((h) => (
+            <option key={h.value} value={h.value}>{h.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Border radius
+        </label>
+        <select
+          value={form.borderRadius ?? "rounded"}
+          onChange={(e) => handleChange("borderRadius", e.target.value)}
+          className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
+        >
+          {RADII.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Font
+        </label>
+        <select
+          value={form.font ?? "inter"}
+          onChange={(e) => handleChange("font", e.target.value)}
+          className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
+        >
+          {FONTS.map((f) => (
+            <option key={f.value} value={f.value}>{f.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Animation
+        </label>
+        <select
+          value={form.animation ?? "slide"}
+          onChange={(e) => handleChange("animation", e.target.value)}
+          className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
+        >
+          {ANIMATIONS.map((a) => (
+            <option key={a.value} value={a.value}>{a.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex items-end">
+        <div className="w-full">
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Shadow
+          </label>
+          <ToggleField
+            checked={form.showShadow ?? true}
+            onChange={(v) => {
+              setForm((f) => ({ ...f, showShadow: v }));
+              setSaved(false);
+              setDirty(true);
+            }}
+            label={form.showShadow ?? true ? "Shown" : "Hidden"}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium text-foreground mb-2">
+        Response language
+      </label>
+      <select
+        value={form.language ?? "en"}
+        onChange={(e) => handleChange("language", e.target.value)}
+        className="w-full h-9 rounded-md bg-input border border-border px-3 text-sm text-foreground"
+      >
+        {LANGUAGES.map((l) => (
+          <option key={l.value} value={l.value}>{l.label}</option>
+        ))}
+      </select>
+    </div>
+  </div>
+</Card>
 
             {/* Security */}
             <Card className="border-border bg-card p-6">

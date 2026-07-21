@@ -13,6 +13,14 @@ class OrganizationSettingsOut(BaseModel):
     widgetColor: str | None
     widgetPosition: str
 
+    theme: str
+    widgetWidth: str
+    widgetHeight: str
+    borderRadius: str
+    font: str
+    showShadow: bool
+    animation: str
+
 
 class OrganizationSettingsUpdate(BaseModel):
     websiteUrl: str | None = None
@@ -22,6 +30,14 @@ class OrganizationSettingsUpdate(BaseModel):
     widgetGreeting: str | None = None
     widgetColor: str | None = None
     widgetPosition: str | None = None
+
+    theme: str | None = None
+    widgetWidth: str | None = None
+    widgetHeight: str | None = None
+    borderRadius: str | None = None
+    font: str | None = None
+    showShadow: bool | None = None
+    animation: str | None = None
 
 
 class OrganizationOut(BaseModel):
@@ -41,3 +57,11 @@ class WidgetConfigOut(BaseModel):
     greeting: str | None
     color: str | None
     position: str
+
+    theme: str
+    widgetWidth: str
+    widgetHeight: str
+    borderRadius: str
+    font: str
+    showShadow: bool
+    animation: str
