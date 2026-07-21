@@ -94,7 +94,7 @@
   });
 
   // Ask the iframe to open itself; it decides pre-chat-form / welcome screen logic.
-  function requestOpen() {
+    function requestOpen() {
     if (autoOpenFired) return;
     autoOpenFired = true;
     iframe.contentWindow?.postMessage({ type: "rag-desk-request-open" }, "*");
@@ -103,7 +103,9 @@
   // Restore "kept open across pages" state on load, before config arrives.
   try {
     if (sessionStorage.getItem(sessionKey) === "1") {
-      requestOpen();
+      iframe.addEventListener("load", () => {
+        setTimeout(requestOpen, 50);
+      });
     }
   } catch {
     /* ignore */

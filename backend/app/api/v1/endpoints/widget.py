@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.models import Organization, OrganizationSettings
+from app.models import Chat, Organization, OrganizationSettings
 from app.repositories import chat_repo
 from app.services.ai.llm import stream_answer
 from app.services.facts.service import get_active_facts
@@ -24,6 +24,7 @@ class WidgetChatRequest(BaseModel):
     org: str
     message: str
     visitorId: str
+    chatId: str | None = None
     visitorName: str | None = None
     visitorEmail: str | None = None
     visitorPhone: str | None = None
@@ -81,7 +82,6 @@ async def widget_chat(
     if not body.visitorId.strip():
         raise HTTPException(status_code=400, detail="Missing visitor id")
 
-    # Enforce required contact fields, if configured
     if settings and (settings.requireContactFields or not settings.allowAnonymousChat):
         missing = []
         if settings.askVisitorName and not (body.visitorName or "").strip():
@@ -100,6 +100,7 @@ async def widget_chat(
         db,
         org.id,
         body.visitorId,
+        chat_id=body.chatId,
         remember=remember,
         contact={
             "name": body.visitorName,
@@ -130,6 +131,10 @@ async def widget_chat(
     ]
 
     async def event_stream():
+        # Tell the frontend which chat this belongs to first, so it can keep
+        # sending subsequent messages in this session to the same thread.
+        yield f"data: {json.dumps({'chatId': chat.id})}\n\n"
+
         collected = []
         async for token in stream_answer(system_prompt, messages):
             collected.append(token)
@@ -142,6 +147,43 @@ async def widget_chat(
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@router.get("/history")
+async def widget_history(
+    org: str,
+    visitorId: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return prior messages for a returning visitor, only if the org has
+    both 'remember conversations' and 'save visitor history' enabled — if
+    either is off there is nothing to (or should) restore."""
+    org_obj, settings = await _get_org_and_settings(db, org)
+
+    if not settings or not settings.rememberConversations or not settings.saveVisitorHistory:
+        return {"chatId": None, "messages": []}
+
+    chat = (
+        await db.execute(
+            select(Chat).where(
+                Chat.organizationId == org_obj.id,
+                Chat.visitorId == visitorId,
+                Chat.source == "widget",
+            )
+        )
+    ).scalars().first()
+
+    if chat is None:
+        return {"chatId": None, "messages": []}
+
+    msgs = await chat_repo.list_messages(db, chat.id)
+    return {
+        "chatId": chat.id,
+        "messages": [
+            {"id": m.id, "sender": m.sender, "content": m.content, "createdAt": m.createdAt.isoformat()}
+            for m in msgs
+        ],
+    }
 
 
 @router.get("/config", response_model=WidgetConfigOut)

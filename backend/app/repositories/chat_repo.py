@@ -28,11 +28,25 @@ async def get_or_create_widget_chat(
     org_id: str,
     visitor_id: str,
     *,
+    chat_id: str | None = None,
     remember: bool = True,
     contact: dict | None = None,
 ) -> Chat:
     chat = None
-    if remember:
+
+    # If the frontend already has a chat for this session, always continue it —
+    # this is what keeps a single open conversation from fragmenting into a new
+    # row per message, regardless of the "remember" setting.
+    if chat_id:
+        chat = (
+            await db.execute(
+                select(Chat).where(Chat.id == chat_id, Chat.organizationId == org_id)
+            )
+        ).scalars().first()
+
+    # No session chat yet — only reuse an older chat by visitor if remembering
+    # conversations across visits is enabled.
+    if chat is None and remember:
         chat = (
             await db.execute(
                 select(Chat).where(
@@ -59,7 +73,6 @@ async def get_or_create_widget_chat(
         await db.commit()
 
     return chat
-
 
 async def get_chat_for_org(db: AsyncSession, chat_id: str, org_id: str) -> Chat | None:
     return (

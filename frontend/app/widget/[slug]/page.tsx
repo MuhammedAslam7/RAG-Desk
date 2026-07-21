@@ -55,6 +55,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
   const sendingRef = useRef(false);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chatIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     document.documentElement.style.background = "transparent";
@@ -112,7 +113,6 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     }
     setVisitorId(id);
 
-    // Restore contact info if we previously collected it for this visitor
     try {
       const saved = localStorage.getItem(CONTACT_KEY_PREFIX + slug);
       if (saved) {
@@ -123,8 +123,29 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     } catch {
       /* ignore */
     }
-  }, [slug]);
 
+    // Restore prior conversation, if the org allows it.
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/history?org=${slug}&visitorId=${id}`)
+      .then((r) => r.json())
+      .then((data: { chatId: string | null; messages: { id: string; sender: string; content: string }[] }) => {
+        if (data.chatId) {
+          chatIdRef.current = data.chatId;
+        }
+        if (data.messages?.length) {
+          setMessages(
+            data.messages.map((m) => ({
+              id: m.id,
+              role: m.sender === "ai" ? "assistant" : "user",
+              content: m.content,
+            }))
+          );
+          setShowWelcome(false);
+        }
+      })
+      .catch(() => {
+        /* no history available — start fresh, not fatal */
+      });
+  }, [slug]);
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -246,7 +267,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     ]);
     setInput("");
 
-    try {
+   try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -254,6 +275,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
           org: slug,
           message: text,
           visitorId,
+          chatId: chatIdRef.current || undefined,
           visitorName: contact.name || undefined,
           visitorEmail: contact.email || undefined,
           visitorPhone: contact.phone || undefined,
@@ -284,10 +306,14 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
           const payload = line.slice(5).trim();
           if (payload === "[DONE]") continue;
           try {
-            const { text: token } = JSON.parse(payload);
-            if (token) {
+            const parsed = JSON.parse(payload);
+            if (parsed.chatId) {
+              chatIdRef.current = parsed.chatId;
+              continue;
+            }
+            if (parsed.text) {
               setMessages((m) =>
-                m.map((x) => (x.id === aiId ? { ...x, content: x.content + token } : x))
+                m.map((x) => (x.id === aiId ? { ...x, content: x.content + parsed.text } : x))
               );
             }
           } catch {
@@ -471,34 +497,34 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
           </div>
         )}
 
-        {/* Messages */}
+       {/* Messages */}
         {!needsContactForm &&
           messages.map((m) => (
             <div key={m.id} className={m.role === "user" ? "text-right" : "text-left"}>
               <span
-                className={`inline-block px-3 py-2 text-sm max-w-[85%] break-words whitespace-pre-wrap shadow-sm ${
+                className={`inline-block px-3 py-2 text-sm max-w-[85%] break-words whitespace-pre-wrap shadow-sm rounded-2xl ${
                   m.role === "user"
-                    ? "rounded-2xl rounded-br-sm"
-                    : "rounded-2xl rounded-bl-sm border border-border"
+                    ? "rounded-br-sm"
+                    : `rounded-bl-sm border border-border ${
+                        config?.aiBubbleColor ? "" : "bg-card text-card-foreground"
+                      }`
                 }`}
                 style={{
                   ...(m.role === "user"
                     ? { backgroundColor: userBubble, color: "#fff" }
-                    : { ...aiBubbleStyle, ...(!config?.aiBubbleColor ? {} : undefined) }),
+                    : aiBubbleStyle),
                   ...(m.role === "assistant" ? textStyle : undefined),
                 }}
               >
-                <span className={m.role === "assistant" && !config?.aiBubbleColor ? "bg-card text-card-foreground" : ""}>
-                  {m.content ? (
-                    m.content
-                  ) : m.role === "assistant" && loading && config?.aiThinkingAnimation !== false ? (
-                    <span className="flex gap-1 py-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
-                    </span>
-                  ) : null}
-                </span>
+                {m.content ? (
+                  m.content
+                ) : m.role === "assistant" && loading && config?.aiThinkingAnimation !== false ? (
+                  <span className="flex gap-1 py-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
+                  </span>
+                ) : null}
               </span>
               {config?.showTimestamps && (
                 <div className="text-[10px] text-muted-foreground mt-0.5">
