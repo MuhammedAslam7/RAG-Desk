@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.models import User
 from app.repositories import chat_repo
 from app.schemas.chat import ChatInitOut, ChatRequest, MessageOut
-from app.services.ai.llm import stream_answer
+from app.services.ai.llm import stream_answer, LLMStreamError
 from app.services.facts.service import get_active_facts
 from app.services.rag.prompt import build_system_prompt
 from app.services.rag.retrieval import (
@@ -95,13 +95,27 @@ async def post_chat(
     }
     system_prompt = build_system_prompt(ranked, facts, ai_settings)
 
+    FALLBACK_MESSAGE = (
+    "Sorry, I'm having trouble answering right now. Please try again in a moment."
+)
+
     async def event_stream():
         collected = []
-        async for token in stream_answer(system_prompt, messages):
-            collected.append(token)
-            yield f"data: {json.dumps({'text': token})}\n\n"
+        try:
+            async for token in stream_answer(system_prompt, messages):
+                collected.append(token)
+                yield f"data: {json.dumps({'text': token})}\n\n"
+        except LLMStreamError as e:
+            print("Dashboard LLM stream failed:", repr(e))
+            fallback = FALLBACK_MESSAGE
+            yield f"data: {json.dumps({'text': fallback})}\n\n"
+            await chat_repo.add_message(db, chat.id, "ai", fallback)
+            yield "data: [DONE]\n\n"
+            return
+
         full = "".join(collected)
-        await chat_repo.add_message(db, chat.id, "ai", full)
+        if full:
+            await chat_repo.add_message(db, chat.id, "ai", full)
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

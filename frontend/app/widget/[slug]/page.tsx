@@ -249,7 +249,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     }
   };
 
-  const send = async (initialText?: string) => {
+ const send = async (initialText?: string) => {
     const text = initialText ?? input;
     if (!text.trim() || !visitorId || sendingRef.current || loading) return;
     if (needsContactForm && contactRequired) return;
@@ -267,7 +267,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     ]);
     setInput("");
 
-   try {
+    try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -294,6 +294,8 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let gotAnyText = false;
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -312,6 +314,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
               continue;
             }
             if (parsed.text) {
+              gotAnyText = true;
               setMessages((m) =>
                 m.map((x) => (x.id === aiId ? { ...x, content: x.content + parsed.text } : x))
               );
@@ -321,6 +324,29 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
           }
         }
       }
+
+      // Stream ended (connection dropped, server crashed mid-response, etc.)
+      // without ever sending any text — show something rather than leaving
+      // a blank bubble.
+      if (!gotAnyText) {
+        setMessages((m) =>
+          m.map((x) =>
+            x.id === aiId
+              ? { ...x, content: "Sorry, I didn't get a response. Please try again." }
+              : x
+          )
+        );
+      }
+    } catch (err) {
+      // Network failure, fetch throwing, reader throwing mid-stream, etc.
+      console.error("Widget chat error:", err);
+      setMessages((m) =>
+        m.map((x) =>
+          x.id === aiId
+            ? { ...x, content: "Sorry, something went wrong. Please try again." }
+            : x
+        )
+      );
     } finally {
       setLoading(false);
       sendingRef.current = false;

@@ -11,13 +11,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models import Chat, Organization, OrganizationSettings
 from app.repositories import chat_repo
-from app.services.ai.llm import stream_answer
+from app.services.ai.llm import stream_answer, LLMStreamError
 from app.services.facts.service import get_active_facts
 from app.services.rag.prompt import build_system_prompt
 from app.services.rag.retrieval import get_relevant_chunks, rank_by_relevance_and_recency
 from app.schemas.organization import WidgetConfigOut
 
 router = APIRouter()
+
+FALLBACK_MESSAGE = (
+    "Sorry, I'm having trouble answering right now. Please try again in a moment."
+)
 
 
 class WidgetChatRequest(BaseModel):
@@ -110,10 +114,19 @@ async def widget_chat(
     )
     await chat_repo.add_message(db, chat.id, "user", body.message, persist=persist)
 
-    ranked = rank_by_relevance_and_recency(
-        await get_relevant_chunks(db, body.message, org.id)
-    )
-    facts = await get_active_facts(db, org.id)
+    # --- RAG + facts: never let a retrieval failure kill the whole response ---
+    ranked = []
+    try:
+        candidates = await get_relevant_chunks(db, body.message, org.id)
+        ranked = rank_by_relevance_and_recency(candidates)
+    except Exception as e:  # noqa: BLE001
+        print("Widget RAG error:", repr(e))
+
+    facts = []
+    try:
+        facts = await get_active_facts(db, org.id)
+    except Exception as e:  # noqa: BLE001
+        print("Widget fact lookup error:", repr(e))
 
     ai_settings = {
         "aiName": settings.aiName if settings else "AI Assistant",
@@ -136,12 +149,33 @@ async def widget_chat(
         yield f"data: {json.dumps({'chatId': chat.id})}\n\n"
 
         collected = []
-        async for token in stream_answer(system_prompt, messages):
-            collected.append(token)
-            yield f"data: {json.dumps({'text': token})}\n\n"
+        try:
+            async for token in stream_answer(system_prompt, messages):
+                collected.append(token)
+                yield f"data: {json.dumps({'text': token})}\n\n"
+        except LLMStreamError as e:
+            print("Widget LLM stream failed:", repr(e))
+            # Nothing (or not enough) came through — send a real fallback message
+            # instead of just closing the connection.
+            fallback = FALLBACK_MESSAGE
+            yield f"data: {json.dumps({'text': fallback})}\n\n"
+            if persist:
+                await chat_repo.add_message(db, chat.id, "ai", fallback, persist=persist)
+            yield "data: [DONE]\n\n"
+            return
+        except Exception as e:  # noqa: BLE001
+            # Catch-all so a truly unexpected error still closes cleanly with
+            # a message the user can see, rather than a silently dead stream.
+            print("Widget stream unexpected error:", repr(e))
+            fallback = FALLBACK_MESSAGE
+            yield f"data: {json.dumps({'text': fallback})}\n\n"
+            if persist:
+                await chat_repo.add_message(db, chat.id, "ai", fallback, persist=persist)
+            yield "data: [DONE]\n\n"
+            return
 
         full = "".join(collected)
-        if full:
+        if full and persist:
             await chat_repo.add_message(db, chat.id, "ai", full, persist=persist)
 
         yield "data: [DONE]\n\n"
