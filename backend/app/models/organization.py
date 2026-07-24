@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -20,6 +20,16 @@ class Organization(Base):
     name: Mapped[str] = mapped_column(String)
     slug: Mapped[str] = mapped_column(String, unique=True)
     status: Mapped[str] = mapped_column(String, default="active")
+
+    logoUrl: Mapped[str | None] = mapped_column(Text, nullable=True)
+    websiteUrl: Mapped[str | None] = mapped_column(String, nullable=True)
+    industry: Mapped[str | None] = mapped_column(String, nullable=True)
+    contactEmail: Mapped[str | None] = mapped_column(String, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    country: Mapped[str | None] = mapped_column(String, nullable=True)
+    timezone: Mapped[str | None] = mapped_column(String, nullable=True)
+    language: Mapped[str] = mapped_column(String, default="en")
+
     createdAt: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updatedAt: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

@@ -34,9 +34,12 @@ async def get_org(
     org = await db.get(Organization, user.organizationId)
     settings = await _get_settings(db, user.organizationId)
     return OrganizationOut(
-        id=org.id, name=org.name, slug=org.slug, status=org.status,
-        createdAt=org.createdAt, settings=settings,
-    )
+    id=org.id, name=org.name, slug=org.slug, status=org.status,
+    logoUrl=org.logoUrl, websiteUrl=org.websiteUrl, industry=org.industry,
+    contactEmail=org.contactEmail, phone=org.phone, country=org.country,
+    timezone=org.timezone, language=org.language,
+    createdAt=org.createdAt, settings=settings,
+)
 
 
 @router.patch("")

@@ -135,9 +135,16 @@ class OrganizationOut(BaseModel):
     name: str
     slug: str
     status: str
+    logoUrl: str | None
+    websiteUrl: str | None
+    industry: str | None
+    contactEmail: str | None
+    phone: str | None
+    country: str | None
+    timezone: str | None
+    language: str
     createdAt: datetime
     settings: OrganizationSettingsOut
-
 
 class WidgetConfigOut(BaseModel):
     orgName: str
