@@ -45,7 +45,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     setError(null);
     try {
       await apiFetch(`/api/v1/team/invitations/${token}/accept`, { method: "POST" });
-      router.push("/dashboard");
+      router.push("/overview");
     } catch (e: any) {
       setError(e.message?.includes("different email")
         ? "This invite was sent to a different email address."

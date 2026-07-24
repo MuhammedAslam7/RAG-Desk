@@ -36,10 +36,10 @@ export default function Header() {
             }
           >
             <Link 
-              href="/dashboard" 
+              href="/overview" 
               className="px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
-              Dashboard
+              Overview
             </Link>
             <div className="w-px h-6 bg-border" />
             <UserButton afterSignOutUrl="/" />

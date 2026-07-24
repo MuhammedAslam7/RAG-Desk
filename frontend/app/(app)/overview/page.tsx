@@ -98,7 +98,7 @@ function ComingSoonCard({ title, hint }: { title: string; hint: string }) {
   );
 }
 
-export default function Dashboard() {
+export default function Overview() {
   const { data, loading } = useDashboard();
   const [search, setSearch] = useState("");
   const [copied, setCopied] = useState(false);
@@ -307,32 +307,32 @@ export default function Dashboard() {
             <Card className="border-border bg-card p-6">
               <h2 className="text-sm font-semibold text-foreground mb-4">Quick actions</h2>
               <div className="grid grid-cols-2 gap-2">
-                <Link href="/dashboard/knowledge">
+                <Link href="/knowledge">
                   <Button variant="outline" size="sm" className="w-full justify-start gap-2">
                     <Plus className="h-3.5 w-3.5" /> Upload doc
                   </Button>
                 </Link>
-                <Link href="/dashboard/knowledge">
+                <Link href="/knowledge">
                   <Button variant="outline" size="sm" className="w-full justify-start gap-2">
                     <HelpCircle className="h-3.5 w-3.5" /> Add FAQ
                   </Button>
                 </Link>
-                <Link href="/dashboard/knowledge">
+                <Link href="/knowledge">
                   <Button variant="outline" size="sm" className="w-full justify-start gap-2">
                     <Globe className="h-3.5 w-3.5" /> Crawl site
                   </Button>
                 </Link>
-                <Link href="/dashboard/facts">
+                <Link href="/facts">
                   <Button variant="outline" size="sm" className="w-full justify-start gap-2">
                     <Lightbulb className="h-3.5 w-3.5" /> Add fact
                   </Button>
                 </Link>
-                <Link href="/dashboard/team">
+                <Link href="/team">
                   <Button variant="outline" size="sm" className="w-full justify-start gap-2">
                     <Mail className="h-3.5 w-3.5" /> Invite teammate
                   </Button>
                 </Link>
-                <Link href="/dashboard/chat">
+                <Link href="/chat">
                   <Button variant="outline" size="sm" className="w-full justify-start gap-2">
                     <Bot className="h-3.5 w-3.5" /> Test chatbot
                   </Button>
@@ -378,7 +378,7 @@ export default function Dashboard() {
                   </dd>
                 </div>
               </dl>
-              <Link href="/dashboard/settings">
+              <Link href="/settings">
                 <Button variant="ghost" size="sm" className="w-full justify-center gap-1 mt-4">
                   Manage widget <ExternalLink className="h-3 w-3" />
                 </Button>
@@ -404,7 +404,7 @@ export default function Dashboard() {
                   {data.kpis.pendingInvitations === 1 ? "" : "s"} pending
                 </p>
               )}
-              <Link href="/dashboard/team">
+              <Link href="/team">
                 <Button variant="ghost" size="sm" className="w-full justify-center gap-1 mt-4">
                   Manage team <ExternalLink className="h-3 w-3" />
                 </Button>
@@ -425,7 +425,7 @@ export default function Dashboard() {
                   {filteredConversations.map((c) => (
                     <Link
                       key={c.chatId}
-                      href="/dashboard/conversations"
+                      href="/conversations"
                       className="flex items-center justify-between py-2.5 px-2 -mx-2 rounded-lg hover:bg-secondary/50 transition-colors"
                     >
                       <div className="min-w-0">

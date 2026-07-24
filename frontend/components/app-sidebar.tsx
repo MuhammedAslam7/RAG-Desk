@@ -21,15 +21,15 @@ import {
 import { useSidebar } from "@/lib/sidebar-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 const menuItems = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Chat", icon: MessageSquare, href: "/dashboard/chat" },
-  { label: "Live Conversations", icon: Users, href: "/dashboard/conversations" },
-  { label: "Knowledge", icon: BookOpen, href: "/dashboard/knowledge" },
-  { label: "Facts", icon: Lightbulb, href: "/dashboard/facts" },
-  { label: "Team", icon: Users2, href: "/dashboard/team" },
-  { label: "Notifications", icon: Bell, href: "/dashboard/notifications" },
-  { label: "Billing", icon: CreditCard, href: "/dashboard/billing" },
-  { label: "Settings", icon: Settings, href: "/dashboard/settings" },
+  { label: "Overview", icon: LayoutDashboard, href: "/overview" },
+  { label: "Chat", icon: MessageSquare, href: "/chat" },
+  { label: "Live Conversations", icon: Users, href: "/conversations" },
+  { label: "Knowledge", icon: BookOpen, href: "/knowledge" },
+  { label: "Facts", icon: Lightbulb, href: "/facts" },
+  { label: "Team", icon: Users2, href: "/team" },
+  { label: "Notifications", icon: Bell, href: "/notifications" },
+  { label: "Billing", icon: CreditCard, href: "/billing" },
+  { label: "Settings", icon: Settings, href: "/settings" },
 ];
 
 export function AppSidebar() {

@@ -151,7 +151,7 @@ export default function Onboarding() {
         method: "POST",
         body: JSON.stringify({ ...form, logo_url }),
       });
-      router.push("/dashboard");
+      router.push("/overview");
     } catch {
       setError("Failed to create organization. Please try again.");
     } finally {

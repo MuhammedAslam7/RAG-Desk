@@ -13,7 +13,7 @@ export default function Page() {
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      router.replace("/dashboard");
+      router.replace("/overview");
     }
   }, [isLoaded, isSignedIn, router]);
 

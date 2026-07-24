@@ -1,4 +1,4 @@
-// frontend/app/(app)/dashboard/team/page.tsx
+// frontend/app/(app)/team/page.tsx
 import TeamManager from "@/components/team-manager";
 
 export default function TeamPage() {

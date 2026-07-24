@@ -1,4 +1,4 @@
-// frontend/app/dashboard/conversations/page.tsx
+// frontend/app/conversations/page.tsx
 import WidgetSessions from "@/components/widget-sessions";
 
 export default function ConversationsPage() {
