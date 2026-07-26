@@ -1,7 +1,7 @@
 // frontend/components/org-settings.manager.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,11 +25,88 @@ import {
   MessagesSquare,
   Bot,
   ClipboardList,
+  Eye,
+  EyeOff,
+  RotateCcw,
+  Sun,
+  Moon,
+  Paintbrush,
+  Smile,
+  ShieldCheck,
+  Settings2,
+  PanelRightOpen,
+  PanelRightClose,
+  Menu,
+  X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useOrgSettings } from "@/hooks/use-org-settings";
 import { OrganizationSettings } from "@/types";
 import EmbedSnippet from "./embed-snippet";
+import { PREVIEW_CONFIG_MESSAGE, mapSettingsToWidgetConfig } from "@/lib/widget-preview";
 
+// ─────────────────────────────────────────────────────────────
+// Section definitions for the sub-sidebar
+// ─────────────────────────────────────────────────────────────
+interface SidebarItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+}
+
+interface SidebarGroup {
+  group: string;
+  icon: React.ElementType;
+  items: SidebarItem[];
+}
+
+const SIDEBAR_GROUPS: SidebarGroup[] = [
+  {
+    group: "Widget",
+    icon: Paintbrush,
+    items: [
+      { id: "widget-appearance", label: "Appearance", icon: Palette },
+      { id: "widget-header", label: "Header", icon: LayoutTemplate },
+      { id: "widget-welcome", label: "Welcome Screen", icon: Hand },
+      { id: "widget-behavior", label: "Chat Behavior", icon: Zap },
+      { id: "widget-messages", label: "Messages", icon: MessagesSquare },
+    ],
+  },
+  {
+    group: "AI",
+    icon: Bot,
+    items: [{ id: "ai-behavior", label: "AI Behavior", icon: Smile }],
+  },
+  {
+    group: "Conversation",
+    icon: ClipboardList,
+    items: [{ id: "conversation", label: "Conversation Settings", icon: Settings2 }],
+  },
+  {
+    group: "Security",
+    icon: ShieldCheck,
+    items: [{ id: "security", label: "Website & Security", icon: Globe }],
+  },
+  {
+    group: "General",
+    icon: MessageSquare,
+    items: [{ id: "fallback", label: "Fallback", icon: MessageSquare }],
+  },
+];
+
+// Flatten for quick lookup & scroll mapping
+const ALL_SIDEBAR_ITEMS = SIDEBAR_GROUPS.flatMap((g) => g.items);
+
+// ─────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────
 const POSITIONS = [
   { value: "bottom-right", label: "Bottom right" },
   { value: "bottom-left", label: "Bottom left" },
@@ -103,6 +180,9 @@ const EMOJI_USAGE = [
   { value: "frequent", label: "Frequent" },
 ];
 
+const WIDTH_PX: Record<string, number> = { small: 320, medium: 380, large: 440 };
+const HEIGHT_PX: Record<string, number> = { small: 480, medium: 600, large: 720 };
+
 const PRESET_COLORS = [
   "#3b82f6", "#0ea5e9", "#06b6d4", "#10b981",
   "#84cc16", "#f59e0b", "#f97316", "#ef4444",
@@ -113,7 +193,9 @@ function isValidHex(v: string) {
   return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(v);
 }
 
-// ---- Color picker field: swatch button -> opens a small modal ----
+// ─────────────────────────────────────────────────────────────
+// UI sub-components (ColorPickerField, ToggleField)
+// ─────────────────────────────────────────────────────────────
 function ColorPickerField({
   value,
   onChange,
@@ -160,7 +242,6 @@ function ColorPickerField({
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Live preview */}
             <div
               className="h-16 rounded-lg border border-border flex items-center justify-center"
               style={{ backgroundColor: isValidHex(draft) ? draft : "#3b82f6" }}
@@ -170,11 +251,8 @@ function ColorPickerField({
               </span>
             </div>
 
-            {/* Preset swatches */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">
-                Presets
-              </p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Presets</p>
               <div className="grid grid-cols-6 gap-2">
                 {PRESET_COLORS.map((c) => (
                   <button
@@ -192,11 +270,8 @@ function ColorPickerField({
               </div>
             </div>
 
-            {/* Custom color: native picker + hex input side by side */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">
-                Custom
-              </p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Custom</p>
               <div className="flex gap-2">
                 <input
                   type="color"
@@ -274,12 +349,84 @@ function ToggleField({
 
 type FormValue = string | number | boolean | null | undefined;
 
+// ─────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────
 export default function OrgSettingsManager() {
   const { org, loading, update } = useOrgSettings();
   const [form, setForm] = useState<Partial<OrganizationSettings>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+
+  // ── Active section (intersection observer) ───────────────
+  const [activeSection, setActiveSection] = useState<string>("widget-appearance");
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // IntersectionObserver: track which section is visible
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find the first entry that is intersecting (most visible)
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible.length > 0) {
+          setActiveSection(visible[0].target.id);
+        }
+      },
+      {
+        root: contentRef.current,
+        rootMargin: "-80px 0px -60% 0px",
+        threshold: [0, 0.25, 0.5, 0.75, 1],
+      }
+    );
+
+    const ids = ALL_SIDEBAR_ITEMS.map((i) => i.id);
+    const elements = ids
+      .map((id) => document.getElementById(id))
+      .filter(Boolean) as HTMLElement[];
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [form]); // re-observe when form changes (sections might re-render)
+
+  // ── Sub-sidebar open/close state ─────────────────────────
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // ── Preview state (default: hidden) ──────────────────────
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewBg, setPreviewBg] = useState<"light" | "dark">("light");
+  const [iframeKey, setIframeKey] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  const previewOrigin =
+    typeof window !== "undefined" ? window.location.origin : "";
+
+  const syncPreview = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+    const widgetConfig = mapSettingsToWidgetConfig(formRef.current);
+    iframe.contentWindow.postMessage(
+      { type: PREVIEW_CONFIG_MESSAGE, config: widgetConfig },
+      previewOrigin
+    );
+  }, [previewOrigin]);
+
+  useEffect(() => {
+    const timer = setTimeout(syncPreview, 200);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form]);
+
+  const handleIframeLoad = useCallback(() => {
+    syncPreview();
+  }, [syncPreview]);
+
+  const resetPreview = useCallback(() => {
+    setIframeKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     if (org) setForm(org.settings);
@@ -306,6 +453,14 @@ export default function OrgSettingsManager() {
     }
   };
 
+  // Scroll to a section
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   if (loading || !org) {
     return (
       <div className="h-full flex items-center justify-center bg-background">
@@ -316,24 +471,254 @@ export default function OrgSettingsManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col relative">
-      <div className="border-b border-border px-8 py-6">
-        <h1 className="text-3xl font-bold text-foreground mb-1">
-          Workspace Settings
-        </h1>
-        <p className="text-muted-foreground">
-          {org.name} &middot; <span className="font-mono">{org.slug}</span>
-        </p>
+      {/* ── Header ───────────────────────────────────────────── */}
+      <div className="border-b border-border px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            Workspace Settings
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {org.name} &middot; <span className="font-mono text-xs">{org.slug}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* ── Mobile hamburger toggle ── */}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border bg-input/20 text-foreground hover:border-primary/50 transition-colors"
+            title="Open navigation menu"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+
+          {/* ── Preview toggle ── */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showPreview;
+              setShowPreview(next);
+              if (next) setSidebarOpen(false);
+            }}
+            className={`inline-flex items-center gap-2 h-9 rounded-md border px-3 text-sm transition-colors ${
+              showPreview
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-border bg-input/20 text-foreground hover:border-primary/50"
+            }`}
+          >
+            {showPreview ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">{showPreview ? "Hide Preview" : "Show Preview"}</span>
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        {/* pb-24 leaves clearance so the floating save button never covers content */}
-        <div className="max-w-5xl mx-auto px-8 py-8 space-y-6 pb-24">
-          <EmbedSnippet slug={org.slug} position={org.settings.widgetPosition || "bottom-right"} />
+      <div className="flex-1 overflow-hidden flex">
+        {/* ── Desktop sub-sidebar (collapsible: full ⇄ icons) ──── */}
+        <TooltipProvider delay={300}>
+          <div
+            className={`hidden lg:flex flex-shrink-0 flex-col border-r border-border bg-card/40 overflow-y-auto transition-all duration-300 ease-in-out ${
+              sidebarOpen ? "w-56" : "w-14"
+            }`}
+          >
+            {/* Toggle button — top of sidebar */}
+            <div className={`flex items-center flex-shrink-0 border-b border-border transition-all ${
+              sidebarOpen ? "justify-between px-3 h-11" : "justify-center h-11"
+            }`}>
+              {sidebarOpen && (
+                <span className="text-xs font-semibold text-muted-foreground tracking-wider">
+                  Settings
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setSidebarOpen((v) => !v)}
+                className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              >
+                {sidebarOpen ? (
+                  <ChevronLeft className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+            </div>
 
-          {/* Two cards side by side on large screens */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            {/* Widget appearance */}
-            <Card className="border-border bg-card p-6 lg:col-span-2">
+            {/* Sidebar content */}
+            <div className="flex-1 py-3">
+              {SIDEBAR_GROUPS.map((group) => {
+                const GroupIcon = group.icon;
+                const firstInGroup = group.items[0]?.id;
+
+                if (sidebarOpen) {
+                  /* ── Expanded mode: group header + labeled items ── */
+                  return (
+                    <div key={group.group} className="mb-4 px-2">
+                      <div className="flex items-center gap-2 px-2 mb-1.5">
+                        <GroupIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {group.group}
+                        </span>
+                      </div>
+                      <div className="space-y-0.5 ml-1">
+                        {group.items.map((item) => {
+                          const ItemIcon = item.icon;
+                          const isActive = activeSection === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => scrollToSection(item.id)}
+                              className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-all ${
+                                isActive
+                                  ? "bg-primary/10 text-primary font-medium"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                              }`}
+                            >
+                              <ItemIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                              <span className="truncate">{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                } else {
+                  /* ── Collapsed mode: icon-only group buttons ── */
+                  const isGroupActive = group.items.some(
+                    (i) => activeSection === i.id
+                  );
+                  return (
+                    <div key={group.group} className="flex justify-center mb-2">
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (firstInGroup) scrollToSection(firstInGroup);
+                            }}
+                            className={`h-9 w-9 rounded-lg flex items-center justify-center transition-all ${
+                              isGroupActive
+                                ? "bg-primary/15 text-primary"
+                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                            }`}
+                          >
+                            <GroupIcon className="h-4.5 w-4.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs">
+                          {group.group}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  );
+                }
+              })}
+            </div>
+          </div>
+        </TooltipProvider>
+
+        {/* ── Mobile sub-sidebar: horizontal scroller ────────── */}
+        <div className="lg:hidden border-b border-border overflow-x-auto flex-shrink-0 scrollbar-hide">
+          <div className="flex gap-1 px-4 py-2.5 min-w-max">
+            {ALL_SIDEBAR_ITEMS.map((item) => {
+              const ItemIcon = item.icon;
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => scrollToSection(item.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all ${
+                    isActive
+                      ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                      : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  <ItemIcon className="h-3 w-3" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Mobile sidebar: overlay drawer ────────────────── */}
+        {sidebarOpen && (
+          <div className="lg:hidden fixed inset-0 z-50">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => setSidebarOpen(false)}
+            />
+            {/* Drawer */}
+            <div className="fixed left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-card border-r border-border z-50 overflow-y-auto shadow-2xl animate-in slide-in-from-left duration-300 ease-out">
+              {/* Drawer header */}
+              <div className="flex items-center justify-between px-4 h-14 border-b border-border">
+                <span className="text-sm font-semibold text-foreground">Sections</span>
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(false)}
+                  className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {/* Drawer content */}
+              <div className="py-4 px-3 space-y-5">
+                {SIDEBAR_GROUPS.map((group) => {
+                  const GroupIcon = group.icon;
+                  return (
+                    <div key={group.group}>
+                      <div className="flex items-center gap-2 px-2 mb-1.5">
+                        <GroupIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {group.group}
+                        </span>
+                      </div>
+                      <div className="space-y-0.5 ml-1">
+                        {group.items.map((item) => {
+                          const ItemIcon = item.icon;
+                          const isActive = activeSection === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                scrollToSection(item.id);
+                                setSidebarOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-all ${
+                                isActive
+                                  ? "bg-primary/10 text-primary font-medium"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                              }`}
+                            >
+                              <ItemIcon className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Left: settings form ─────────────────────────────── */}
+        <div ref={contentRef} className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto px-6 py-6 space-y-6 pb-28">
+            {/* Embed Snippet - always at top, not in sidebar */}
+            <EmbedSnippet slug={org.slug} position={org.settings.widgetPosition || "bottom-right"} />
+
+            {/* ── Widget Appearance ─────────────────────────────── */}
+            <Card id="widget-appearance" className="border-border bg-card p-6 scroll-mt-20">
               <div className="flex items-center gap-2 mb-6">
                 <Palette className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold text-foreground">
@@ -501,8 +886,8 @@ export default function OrgSettingsManager() {
               </div>
             </Card>
 
-            {/* Header */}
-            <Card className="border-border bg-card p-6 lg:col-span-2">
+            {/* ── Header ────────────────────────────────────────── */}
+            <Card id="widget-header" className="border-border bg-card p-6 scroll-mt-20">
               <div className="flex items-center gap-2 mb-6">
                 <LayoutTemplate className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold text-foreground">Header</h2>
@@ -590,8 +975,8 @@ export default function OrgSettingsManager() {
               </div>
             </Card>
 
-            {/* Welcome screen */}
-            <Card className="border-border bg-card p-6 lg:col-span-2">
+            {/* ── Welcome Screen ───────────────────────────────── */}
+            <Card id="widget-welcome" className="border-border bg-card p-6 scroll-mt-20">
               <div className="flex items-center gap-2 mb-6">
                 <Hand className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold text-foreground">Welcome Screen</h2>
@@ -644,8 +1029,8 @@ export default function OrgSettingsManager() {
               </div>
             </Card>
 
-            {/* Chat behavior */}
-            <Card className="border-border bg-card p-6 lg:col-span-2">
+            {/* ── Chat Behavior ────────────────────────────────── */}
+            <Card id="widget-behavior" className="border-border bg-card p-6 scroll-mt-20">
               <div className="flex items-center gap-2 mb-6">
                 <Zap className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold text-foreground">Chat Behavior</h2>
@@ -713,8 +1098,8 @@ export default function OrgSettingsManager() {
               </div>
             </Card>
 
-            {/* Messages */}
-            <Card className="border-border bg-card p-6 lg:col-span-2">
+            {/* ── Messages ──────────────────────────────────────── */}
+            <Card id="widget-messages" className="border-border bg-card p-6 scroll-mt-20">
               <div className="flex items-center gap-2 mb-6">
                 <MessagesSquare className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold text-foreground">Messages</h2>
@@ -783,8 +1168,8 @@ export default function OrgSettingsManager() {
               </div>
             </Card>
 
-            {/* AI Behavior */}
-            <Card className="border-border bg-card p-6 lg:col-span-2">
+            {/* ── AI Behavior ───────────────────────────────────── */}
+            <Card id="ai-behavior" className="border-border bg-card p-6 scroll-mt-20">
               <div className="flex items-center gap-2 mb-6">
                 <Bot className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold text-foreground">AI Behavior</h2>
@@ -865,8 +1250,8 @@ export default function OrgSettingsManager() {
               </p>
             </Card>
 
-            {/* Conversation settings */}
-            <Card className="border-border bg-card p-6 lg:col-span-2">
+            {/* ── Conversation Settings ───────────────────────── */}
+            <Card id="conversation" className="border-border bg-card p-6 scroll-mt-20">
               <div className="flex items-center gap-2 mb-6">
                 <ClipboardList className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold text-foreground">Conversation Settings</h2>
@@ -909,8 +1294,8 @@ export default function OrgSettingsManager() {
               </p>
             </Card>
 
-            {/* Security */}
-            <Card className="border-border bg-card p-6 lg:col-span-2">
+            {/* ── Security ──────────────────────────────────────── */}
+            <Card id="security" className="border-border bg-card p-6 scroll-mt-20">
               <div className="flex items-center gap-2 mb-6">
                 <Globe className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold text-foreground">
@@ -947,35 +1332,162 @@ export default function OrgSettingsManager() {
                 </div>
               </div>
             </Card>
-          </div>
 
-          {/* Fallback — full width below */}
-          <Card className="border-border bg-card p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <MessageSquare className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-semibold text-foreground">
-                Fallback
-              </h2>
+            {/* ── Fallback ──────────────────────────────────────── */}
+            <Card id="fallback" className="border-border bg-card p-6 scroll-mt-20">
+              <div className="flex items-center gap-2 mb-6">
+                <MessageSquare className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">
+                  Fallback
+                </h2>
+              </div>
+              <div className="max-w-md">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Fallback contact email
+                </label>
+                <Input
+                  type="email"
+                  placeholder="support@yourbusiness.com"
+                  value={form.fallbackEmail ?? ""}
+                  onChange={(e) => handleChange("fallbackEmail", e.target.value)}
+                  className="bg-input border-border"
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Where you&apos;d like to be notified when the AI can&apos;t
+                  answer a visitor&apos;s question.
+                </p>
+              </div>
+            </Card>
+          </div> {/* close max-w-4xl */}
+        </div> {/* close flex-1 overflow-auto (left panel) */}
+
+        {/* ── Right: widget preview panel (lg+) ────────────────── */}
+        {showPreview && (
+          <div className="hidden lg:flex w-[460px] border-l border-border flex-shrink-0 flex-col bg-card/30">
+            {/* header */}
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border flex-shrink-0">
+              <span className="text-sm font-medium text-foreground">Live Preview</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPreviewBg((b) => (b === "light" ? "dark" : "light"))}
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title={`Switch to ${previewBg === "light" ? "dark" : "light"} background`}
+                >
+                  {previewBg === "light" ? (
+                    <Moon className="h-3.5 w-3.5" />
+                  ) : (
+                    <Sun className="h-3.5 w-3.5" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetPreview}
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Reset conversation"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview(false)}
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Close preview"
+                >
+                  <EyeOff className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-            <div className="max-w-md">
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Fallback contact email
-              </label>
-              <Input
-                type="email"
-                placeholder="support@yourbusiness.com"
-                value={form.fallbackEmail ?? ""}
-                onChange={(e) => handleChange("fallbackEmail", e.target.value)}
-                className="bg-input border-border"
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Where you&apos;d like to be notified when the AI can&apos;t
-                answer a visitor&apos;s question.
-              </p>
+
+            {/* iframe wrapper with light/dark background */}
+            <div className="flex-1 overflow-auto p-4 flex items-start justify-center">
+              <div
+                className={`rounded-xl overflow-hidden transition-colors ${
+                  previewBg === "light" ? "bg-white" : "bg-neutral-900"
+                }`}
+                style={{
+                  boxShadow:
+                    "0 0 0 1px rgba(0,0,0,0.08), 0 4px 24px rgba(0,0,0,0.12)",
+                }}
+              >
+                <iframe
+                  key={iframeKey}
+                  ref={iframeRef}
+                  src={`/widget/${org.slug}?preview=1`}
+                  onLoad={handleIframeLoad}
+                  title="Widget preview"
+                  className="border-0"
+                  style={{
+                    width: WIDTH_PX[form.widgetWidth || "medium"],
+                    height: HEIGHT_PX[form.widgetHeight || "medium"],
+                  }}
+                />
+              </div>
             </div>
-          </Card>
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* ── Mobile preview overlay (below lg) ────────────────── */}
+      {showPreview && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-background flex flex-col">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border flex-shrink-0">
+            <span className="text-sm font-medium text-foreground">Live Preview</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setPreviewBg((b) => (b === "light" ? "dark" : "light"))}
+                className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                {previewBg === "light" ? (
+                  <Moon className="h-4 w-4" />
+                ) : (
+                  <Sun className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={resetPreview}
+                className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Reset conversation"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPreview(false)}
+                className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <EyeOff className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto p-4 flex items-start justify-center">
+            <div
+              className={`rounded-xl overflow-hidden transition-colors ${
+                previewBg === "light" ? "bg-white" : "bg-neutral-900"
+              }`}
+              style={{
+                boxShadow:
+                  "0 0 0 1px rgba(0,0,0,0.08), 0 4px 24px rgba(0,0,0,0.12)",
+              }}
+            >
+              <iframe
+                key={iframeKey}
+                ref={iframeRef}
+                src={`/widget/${org.slug}?preview=1`}
+                onLoad={handleIframeLoad}
+                title="Widget preview"
+                className="border-0"
+                style={{
+                  width: WIDTH_PX[form.widgetWidth || "medium"],
+                  height: HEIGHT_PX[form.widgetHeight || "medium"],
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating save button — always reachable, no scrolling to the bottom */}
       <div className="absolute bottom-6 right-8 flex items-center gap-3">

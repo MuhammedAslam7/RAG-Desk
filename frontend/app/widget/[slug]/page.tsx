@@ -3,6 +3,7 @@ import { useState, useEffect, use, useRef, useMemo, useCallback } from "react";
 import { X, Send } from "lucide-react";
 import { ChatbotIcon } from "@/components/chatbot-icon";
 import { WidgetConfig } from "@/types";
+import { PREVIEW_CONFIG_MESSAGE } from "@/lib/widget-preview";
 
 interface WidgetMessage {
   id: string;
@@ -57,23 +58,52 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
   const autoOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatIdRef = useRef<string | null>(null);
 
+  // ── Preview-mode refs ──────────────────────────────────────
+  const isPreview = useRef(false);
+  const previewOverrideRef = useRef<Partial<WidgetConfig> | null>(null);
+
+  // Detect ?preview=1 once on mount.
+  useEffect(() => {
+    isPreview.current = new URLSearchParams(window.location.search).has("preview");
+  }, []);
+
   useEffect(() => {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
   }, []);
 
   useEffect(() => {
+    const preview = isPreview.current;
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/config?org=${slug}`)
       .then((r) => r.json())
       .then((cfg: WidgetConfig) => {
-        setConfig(cfg);
-        setIsOpen(!cfg.startMinimized);
+        // If a preview override arrived before the fetch finished, apply it.
+        const merged = preview && previewOverrideRef.current
+          ? { ...cfg, ...previewOverrideRef.current }
+          : cfg;
+        setConfig(merged);
+        setIsOpen(preview ? true : !merged.startMinimized);
       })
       .catch(() => setConfig(null));
   }, [slug]);
 
+  // ── Preview-mode listener: accept config overrides from the settings page ─
   useEffect(() => {
-    if (!config) return;
+    if (!isPreview.current) return;
+    function handlePreviewMessage(event: MessageEvent) {
+      if (event.data?.type !== PREVIEW_CONFIG_MESSAGE) return;
+      const incoming = event.data.config as Partial<WidgetConfig>;
+      previewOverrideRef.current = incoming;
+      setConfig((prev) => (prev ? { ...prev, ...incoming } : prev));
+    }
+    window.addEventListener("message", handlePreviewMessage);
+    return () => window.removeEventListener("message", handlePreviewMessage);
+  }, []);
+
+  // Skip auto-open trigger messages in preview mode (the host-page embed
+  // doesn't exist, and we force-open on mount anyway).
+  useEffect(() => {
+    if (!config || isPreview.current) return;
     window.parent.postMessage(
       {
         type: "rag-desk-widget-triggers",
@@ -106,6 +136,13 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
   }, [config?.font]);
 
   useEffect(() => {
+    // In preview mode: use a throwaway visitor ID (never touch localStorage)
+    // so testing the widget doesn't pollute real visitor history.
+    if (isPreview.current) {
+      setVisitorId(crypto.randomUUID());
+      return;
+    }
+
     let id = localStorage.getItem(VISITOR_KEY);
     if (!id) {
       id = crypto.randomUUID();
@@ -146,6 +183,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         /* no history available — start fresh, not fatal */
       });
   }, [slug]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -191,8 +229,9 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     }
   }, [isOpen]);
 
-  // Minimize after inactivity
+  // Minimize after inactivity (inert in preview mode — the iframe is always open)
   useEffect(() => {
+    if (isPreview.current) return;
     const seconds = config?.minimizeAfterInactivitySeconds;
     if (!isOpen || !seconds) return;
 
@@ -325,9 +364,6 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         }
       }
 
-      // Stream ended (connection dropped, server crashed mid-response, etc.)
-      // without ever sending any text — show something rather than leaving
-      // a blank bubble.
       if (!gotAnyText) {
         setMessages((m) =>
           m.map((x) =>
@@ -338,7 +374,6 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         );
       }
     } catch (err) {
-      // Network failure, fetch throwing, reader throwing mid-stream, etc.
       console.error("Widget chat error:", err);
       setMessages((m) =>
         m.map((x) =>
