@@ -77,18 +77,20 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
       { id: "widget-welcome", label: "Welcome Screen", icon: Hand },
       { id: "widget-behavior", label: "Chat Behavior", icon: Zap },
       { id: "widget-messages", label: "Messages", icon: MessagesSquare },
+      { id: "ai-behavior", label: "AI Behavior", icon: Smile },
+      { id: "conversation", label: "Conversation Settings", icon: Settings2 }
     ],
   },
-  {
-    group: "AI",
-    icon: Bot,
-    items: [{ id: "ai-behavior", label: "AI Behavior", icon: Smile }],
-  },
-  {
-    group: "Conversation",
-    icon: ClipboardList,
-    items: [{ id: "conversation", label: "Conversation Settings", icon: Settings2 }],
-  },
+  // {
+  //   group: "AI",
+  //   icon: Bot,
+  //   items: [],
+  // },
+  // {
+  //   group: "Conversation",
+  //   icon: ClipboardList,
+  //   items: [],
+  // },
   {
     group: "Security",
     icon: ShieldCheck,
@@ -557,9 +559,9 @@ export default function OrgSettingsManager() {
                   /* ── Expanded mode: group header + labeled items ── */
                   return (
                     <div key={group.group} className="mb-4 px-2">
-                      <div className="flex items-center gap-2 px-2 mb-1.5">
-                        <GroupIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <div className="flex items-center gap-2 bg-gray-400 rounded px-2 py-1 mb-1.5">
+                        <GroupIcon className="h-3.5 w-3.5" />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-black">
                           {group.group}
                         </span>
                       </div>
