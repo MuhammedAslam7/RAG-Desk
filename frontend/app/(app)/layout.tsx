@@ -9,7 +9,8 @@ import { ProfileSync } from "@/components/profile-sync";
 async function hasOrg(token: string | null): Promise<boolean> {
   if (!token) return false;
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/org/me`, {
+    const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL;
+    const res = await fetch(`${apiUrl}/api/v1/org/me`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
