@@ -23,6 +23,7 @@ async function hasOrg(token: string | null): Promise<boolean> {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { userId, getToken } = await auth();
+  console.log("userId", userId)
 
   if (!userId) redirect("/sign-in");
 

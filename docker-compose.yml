@@ -2,14 +2,38 @@ services:
   db:
     image: pgvector/pgvector:pg16
     container_name: ai_support_db
-    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: root
       POSTGRES_DB: ai_support
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: ai_support_backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: ai_support_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  adminer:
+    image: adminer
+    container_name: ai_support_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
 volumes:
-  pgdata:
+  postgres_data:
