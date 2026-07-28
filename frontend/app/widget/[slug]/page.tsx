@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, use, useRef, useMemo, useCallback } from "react";
-import { X, Send } from "lucide-react";
+import { X, Send, UserRound, MessageCircle } from "lucide-react";
 import { ChatbotIcon } from "@/components/chatbot-icon";
 import { WidgetConfig } from "@/types";
 import { PREVIEW_CONFIG_MESSAGE } from "@/lib/widget-preview";
@@ -51,12 +51,16 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
   const [contactSubmitted, setContactSubmitted] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
 
+  const [escalated, setEscalated] = useState(false);
+  const [escalating, setEscalating] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatIdRef = useRef<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Preview-mode refs ──────────────────────────────────────
   const isPreview = useRef(false);
@@ -161,7 +165,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
       /* ignore */
     }
 
-    // Restore prior conversation, if the org allows it.
+    // Restore prior conversation and check escalation status in one call
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/history?org=${slug}&visitorId=${id}`)
       .then((r) => r.json())
       .then((data: { chatId: string | null; messages: { id: string; sender: string; content: string }[] }) => {
@@ -169,10 +173,15 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
           chatIdRef.current = data.chatId;
         }
         if (data.messages?.length) {
+          // Detect if escalation happened (agent messages present)
+          const hasAgent = data.messages.some((m) => m.sender === "agent");
+          if (hasAgent) {
+            setEscalated(true);
+          }
           setMessages(
             data.messages.map((m) => ({
               id: m.id,
-              role: m.sender === "ai" ? "assistant" : "user",
+              role: m.sender === "ai" ? "assistant" : m.sender === "agent" ? "agent" : "user",
               content: m.content,
             }))
           );
@@ -183,6 +192,73 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         /* no history available — start fresh, not fatal */
       });
   }, [slug]);
+
+  // ---- Poll for new agent messages when escalated ----
+  useEffect(() => {
+    if (!escalated || !visitorId || !chatIdRef.current) return;
+    const poll = () => {
+      fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/history?org=${slug}&visitorId=${visitorId}`
+      )
+        .then((r) => r.json())
+        .then((data: { messages: { id: string; sender: string; content: string; createdAt: string }[] }) => {
+          if (data.messages?.length) {
+            setMessages((prev) => {
+              const existingIds = new Set(prev.map((m) => m.id));
+              const newOnes = data.messages
+                .filter((m) => !existingIds.has(m.id))
+                .map((m) => ({
+                  id: m.id,
+                  role: m.sender === "user" ? "user" : m.sender === "agent" ? "agent" : "assistant",
+                  content: m.content,
+                  createdAt: m.createdAt,
+                }));
+              if (newOnes.length === 0) return prev;
+              return [...prev, ...newOnes];
+            });
+          }
+        })
+        .catch(() => {});
+    };
+    pollRef.current = setInterval(poll, 3000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [escalated, visitorId, slug]);
+
+  const handleEscalate = async () => {
+    if (!chatIdRef.current || escalating) return;
+    setEscalating(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/escalate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            org: slug,
+            chatId: chatIdRef.current,
+            visitorId,
+          }),
+        }
+      );
+      if (res.ok) {
+        setEscalated(true);
+        setMessages((m) => [
+          ...m,
+          {
+            id: crypto.randomUUID(),
+            role: "system",
+            content: "You have been connected to a human agent. They will join shortly.",
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error("Escalation failed:", err);
+    } finally {
+      setEscalating(false);
+    }
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -434,7 +510,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     >
       {/* Header */}
       <div
-        className="flex items-center gap-3 px-4 py-3 border-b border-border flex-shrink-0"
+        className="flex items-center gap-2 px-4 py-3 border-b border-border flex-shrink-0"
         style={{ backgroundColor: headerBg, color: headerText }}
       >
         <div className="h-9 w-9 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -450,23 +526,42 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold truncate" style={{ color: headerText }}>
-            {config?.botName || "Support AI"}
+            {escalated ? "Support Agent" : (config?.botName || "Support AI")}
           </p>
-          {config?.showOnlineStatus && (
+          {(escalated) ? (
+            <p className="text-xs opacity-80 truncate flex items-center gap-1" style={{ color: headerText }}>
+              <span className="inline-block h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+              Connected to agent
+            </p>
+          ) : config?.showOnlineStatus ? (
             <p className="text-xs opacity-70 truncate" style={{ color: headerText }}>
               {STATUS_LABEL[config.statusText] || "Online"}
             </p>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Talk to a human button — only when not escalated */}
+          {!escalated && messages.length > 0 && !needsContactForm && (
+            <button
+              onClick={handleEscalate}
+              disabled={escalating}
+              className="text-[11px] font-medium px-2.5 py-1.5 rounded-full border border-current opacity-70 hover:opacity-100 transition-opacity disabled:opacity-40 flex items-center gap-1"
+              style={{ color: headerText || "currentColor" }}
+            >
+              <UserRound className="h-3 w-3" />
+              {escalating ? "Connecting..." : "Talk to human"}
+            </button>
+          )}
+          {config?.showCloseButton !== false && (
+            <button
+              onClick={() => setIsOpen(false)}
+              aria-label="Close chat"
+              className="text-current opacity-70 hover:opacity-100 rounded-full p-1.5 transition-opacity"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
         </div>
-        {config?.showCloseButton !== false && (
-          <button
-            onClick={() => setIsOpen(false)}
-            aria-label="Close chat"
-            className="text-current opacity-70 hover:opacity-100 rounded-full p-1.5 transition-opacity flex-shrink-0"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
       {/* Body */}
@@ -562,32 +657,53 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         {!needsContactForm &&
           messages.map((m) => (
             <div key={m.id} className={m.role === "user" ? "text-right" : "text-left"}>
-              <span
-                className={`inline-block px-3 py-2 text-sm max-w-[85%] break-words whitespace-pre-wrap shadow-sm rounded-2xl ${
-                  m.role === "user"
-                    ? "rounded-br-sm"
-                    : `rounded-bl-sm border border-border ${
-                        config?.aiBubbleColor ? "" : "bg-card text-card-foreground"
-                      }`
-                }`}
-                style={{
-                  ...(m.role === "user"
-                    ? { backgroundColor: userBubble, color: "#fff" }
-                    : aiBubbleStyle),
-                  ...(m.role === "assistant" ? textStyle : undefined),
-                }}
-              >
-                {m.content ? (
-                  m.content
-                ) : m.role === "assistant" && loading && config?.aiThinkingAnimation !== false ? (
-                  <span className="flex gap-1 py-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
+              {m.role === "system" ? (
+                <div className="text-center">
+                  <span
+                    className="inline-block px-3 py-2 text-xs max-w-[90%] break-words whitespace-pre-wrap rounded-lg bg-secondary/50 text-muted-foreground italic"
+                  >
+                    {m.content}
                   </span>
-                ) : null}
-              </span>
-              {config?.showTimestamps && (
+                </div>
+              ) : m.role === "agent" ? (
+                <div>
+                  <span
+                    className="inline-block px-3 py-2 text-sm max-w-[85%] break-words whitespace-pre-wrap shadow-sm rounded-2xl rounded-bl-sm bg-emerald-500/10 text-foreground border border-emerald-500/30"
+                  >
+                    <span className="text-[10px] font-semibold text-emerald-500 block mb-0.5">
+                      Agent
+                    </span>
+                    {m.content}
+                  </span>
+                </div>
+              ) : (
+                <span
+                  className={`inline-block px-3 py-2 text-sm max-w-[85%] break-words whitespace-pre-wrap shadow-sm rounded-2xl ${
+                    m.role === "user"
+                      ? "rounded-br-sm"
+                      : `rounded-bl-sm border border-border ${
+                          config?.aiBubbleColor ? "" : "bg-card text-card-foreground"
+                        }`
+                  }`}
+                  style={{
+                    ...(m.role === "user"
+                      ? { backgroundColor: userBubble, color: "#fff" }
+                      : aiBubbleStyle),
+                    ...(m.role === "assistant" ? textStyle : undefined),
+                  }}
+                >
+                  {m.content ? (
+                    m.content
+                  ) : m.role === "assistant" && loading && config?.aiThinkingAnimation !== false ? (
+                    <span className="flex gap-1 py-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
+                    </span>
+                  ) : null}
+                </span>
+              )}
+              {config?.showTimestamps && m.content && m.role !== "system" && (
                 <div className="text-[10px] text-muted-foreground mt-0.5">
                   {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   {config?.showReadReceipts && m.role === "user" && m.content && " · Seen"}
@@ -598,14 +714,14 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         <div ref={bottomRef} />
       </div>
 
-      {/* AI disclaimer */}
-      {config?.showAiDisclaimer && !needsContactForm && (
+      {/* AI disclaimer — hide when escalated */}
+      {config?.showAiDisclaimer && !needsContactForm && !escalated && (
         <p className="text-[10px] text-center text-muted-foreground py-1 border-t border-border/50">
           Responses are generated by AI and may be inaccurate.
         </p>
       )}
 
-      {/* Input */}
+      {/* Input — show different placeholder when escalated */}
       {!needsContactForm && (
         <div className="flex gap-2 p-3 border-t border-border flex-shrink-0 bg-card">
           <input
@@ -620,7 +736,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={!visitorId || loading}
-            placeholder="Type your message..."
+            placeholder={escalated ? "Reply to agent..." : "Type your message..."}
           />
           <button
             type="button"

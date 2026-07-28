@@ -22,6 +22,12 @@ class Chat(Base):
     source: Mapped[str] = mapped_column(String, default="dashboard")
     organizationId: Mapped[str] = mapped_column(ForeignKey("Organization.id"))
 
+    # Human handoff fields
+    status: Mapped[str] = mapped_column(String, default="active")  # active | escalated | human_active | resolved
+    assignedAgentId: Mapped[str | None] = mapped_column(ForeignKey("User.id"), nullable=True)
+    escalatedAt: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    resolvedAt: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     visitorName: Mapped[str | None] = mapped_column(String, nullable=True)
     visitorEmail: Mapped[str | None] = mapped_column(String, nullable=True)
     visitorPhone: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -30,4 +36,9 @@ class Chat(Base):
 
     messages: Mapped[list["Message"]] = relationship(
         back_populates="chat", order_by="Message.createdAt"
+    )
+
+    assignedAgent: Mapped["User | None"] = relationship(
+        foreign_keys=[assignedAgentId],
+        primaryjoin="Chat.assignedAgentId == User.id",
     )

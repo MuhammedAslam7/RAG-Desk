@@ -18,7 +18,7 @@ class Message(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=cuid)
     chatId: Mapped[str] = mapped_column(ForeignKey("Chat.id"))
-    sender: Mapped[str] = mapped_column(String)  # 'user' | 'ai'
+    sender: Mapped[str] = mapped_column(String)  # 'user' | 'ai' | 'agent'
     content: Mapped[str] = mapped_column(Text)
     createdAt: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

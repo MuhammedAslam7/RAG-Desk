@@ -1,4 +1,6 @@
 # backend/app/repositories/chat_repo.py
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,9 +36,6 @@ async def get_or_create_widget_chat(
 ) -> Chat:
     chat = None
 
-    # If the frontend already has a chat for this session, always continue it —
-    # this is what keeps a single open conversation from fragmenting into a new
-    # row per message, regardless of the "remember" setting.
     if chat_id:
         chat = (
             await db.execute(
@@ -44,8 +43,6 @@ async def get_or_create_widget_chat(
             )
         ).scalars().first()
 
-    # No session chat yet — only reuse an older chat by visitor if remembering
-    # conversations across visits is enabled.
     if chat is None and remember:
         chat = (
             await db.execute(
@@ -73,6 +70,7 @@ async def get_or_create_widget_chat(
         await db.commit()
 
     return chat
+
 
 async def get_chat_for_org(db: AsyncSession, chat_id: str, org_id: str) -> Chat | None:
     return (
@@ -116,3 +114,61 @@ async def list_widget_chats(db: AsyncSession, org_id: str) -> list[Chat]:
         ).scalars().all()
     )
 
+
+# ---- Human handoff / escalation methods ----
+
+async def escalate_chat(db: AsyncSession, chat_id: str) -> Chat | None:
+    """Mark a chat as escalated. Returns None if not found."""
+    chat = await db.get(Chat, chat_id)
+    if chat is None:
+        return None
+    if chat.status != "active":
+        return chat  # already escalated or resolved
+    chat.status = "escalated"
+    chat.escalatedAt = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(chat)
+    return chat
+
+
+async def list_escalated_chats(db: AsyncSession, org_id: str) -> list[Chat]:
+    """List chats waiting for human attention (escalated or human_active)."""
+    return list(
+        (
+            await db.execute(
+                select(Chat)
+                .where(
+                    Chat.organizationId == org_id,
+                    Chat.source == "widget",
+                    Chat.status.in_(["escalated", "human_active"]),
+                )
+                .order_by(Chat.escalatedAt.desc().nulls_last(), Chat.createdAt.desc())
+            )
+        ).scalars().all()
+    )
+
+
+async def claim_chat(db: AsyncSession, chat_id: str, agent_id: str) -> Chat | None:
+    """Assign an agent to an escalated chat. Returns None if not found or already claimed."""
+    chat = await db.get(Chat, chat_id)
+    if chat is None:
+        return None
+    if chat.status != "escalated":
+        return None
+    chat.status = "human_active"
+    chat.assignedAgentId = agent_id
+    await db.commit()
+    await db.refresh(chat)
+    return chat
+
+
+async def resolve_chat(db: AsyncSession, chat_id: str) -> Chat | None:
+    """Mark a chat as resolved."""
+    chat = await db.get(Chat, chat_id)
+    if chat is None:
+        return None
+    chat.status = "resolved"
+    chat.resolvedAt = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(chat)
+    return chat

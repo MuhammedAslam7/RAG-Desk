@@ -16,6 +16,7 @@ from app.services.facts.service import get_active_facts
 from app.services.rag.prompt import build_system_prompt
 from app.services.rag.retrieval import get_relevant_chunks, rank_by_relevance_and_recency
 from app.schemas.organization import WidgetConfigOut
+from app.schemas.escalation import EscalationResponse
 
 router = APIRouter()
 
@@ -32,6 +33,12 @@ class WidgetChatRequest(BaseModel):
     visitorName: str | None = None
     visitorEmail: str | None = None
     visitorPhone: str | None = None
+
+
+class EscalateRequest(BaseModel):
+    org: str
+    chatId: str
+    visitorId: str
 
 
 def _origin_allowed(request: Request, allowed: list[str]) -> bool:
@@ -114,6 +121,14 @@ async def widget_chat(
     )
     await chat_repo.add_message(db, chat.id, "user", body.message, persist=persist)
 
+    # ---- If chat is not in active AI mode, just save the message and return ----
+    # This applies to escalated, human_active, and resolved chats.
+    if chat.status != "active":
+        async def passthrough_stream():
+            yield f"data: {json.dumps({'chatId': chat.id})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(passthrough_stream(), media_type="text/event-stream")
+
     # --- RAG + facts: never let a retrieval failure kill the whole response ---
     ranked = []
     try:
@@ -155,8 +170,6 @@ async def widget_chat(
                 yield f"data: {json.dumps({'text': token})}\n\n"
         except LLMStreamError as e:
             print("Widget LLM stream failed:", repr(e))
-            # Nothing (or not enough) came through — send a real fallback message
-            # instead of just closing the connection.
             fallback = FALLBACK_MESSAGE
             yield f"data: {json.dumps({'text': fallback})}\n\n"
             if persist:
@@ -164,8 +177,6 @@ async def widget_chat(
             yield "data: [DONE]\n\n"
             return
         except Exception as e:  # noqa: BLE001
-            # Catch-all so a truly unexpected error still closes cleanly with
-            # a message the user can see, rather than a silently dead stream.
             print("Widget stream unexpected error:", repr(e))
             fallback = FALLBACK_MESSAGE
             yield f"data: {json.dumps({'text': fallback})}\n\n"
@@ -284,3 +295,31 @@ async def widget_config(org: str, db: AsyncSession = Depends(get_db)):
         requireContactFields=g("requireContactFields", False),
         allowAnonymousChat=g("allowAnonymousChat", True),
     )
+
+
+@router.post("/escalate", response_model=EscalationResponse)
+async def widget_escalate(
+    body: EscalateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Visitor requests escalation to a human agent."""
+    org, settings = await _get_org_and_settings(db, body.org)
+
+    if org.status != "active":
+        raise HTTPException(status_code=403, detail="This assistant is currently unavailable")
+
+    if settings and settings.allowedDomains:
+        allowed = [d.strip() for d in settings.allowedDomains.split(",") if d.strip()]
+        if allowed and not _origin_allowed(request, allowed):
+            raise HTTPException(status_code=403, detail="Origin not allowed")
+
+    if not body.chatId:
+        raise HTTPException(status_code=400, detail="chatId is required")
+
+    chat = await chat_repo.get_chat_for_org(db, body.chatId, org.id)
+    if chat is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    chat = await chat_repo.escalate_chat(db, chat.id)
+    return EscalationResponse(success=True, chatId=chat.id, status=chat.status)

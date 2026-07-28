@@ -211,6 +211,52 @@ export interface DashboardRecentSource {
   createdAt: string;
 }
 
+// frontend/types/index.ts — escalation / human handoff
+export interface EscalatedChat {
+  chatId: string;
+  visitorId: string | null;
+  visitorName: string | null;
+  visitorEmail: string | null;
+  status: "escalated" | "human_active";
+  assignedAgentId: string | null;
+  escalatedAt: string | null;
+  createdAt: string;
+  messageCount: number;
+  lastMessage: string | null;
+  lastSender: string | null;
+}
+
+export interface EscalatedChatDetail {
+  chatId: string;
+  visitorId: string | null;
+  visitorName: string | null;
+  visitorEmail: string | null;
+  status: string;
+  assignedAgentId: string | null;
+  escalatedAt: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  messages: Array<{
+    id: string;
+    sender: string;
+    content: string;
+    createdAt: string;
+  }>;
+}
+
+export interface AgentReply {
+  id: string;
+  sender: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface EscalationResult {
+  success: boolean;
+  chatId: string;
+  status: string;
+}
+
 export interface DashboardWidget {
   status: string;
   color: string | null;
