@@ -8,6 +8,7 @@ app/main.py
 app/api/deps.py
 app/api/v1/router.py
 app/api/v1/endpoints/chat.py
+app/api/v1/endpoints/dashboard.py
 app/api/v1/endpoints/facts.py
 app/api/v1/endpoints/knowledge.py
 app/api/v1/endpoints/onboarding.py
@@ -34,6 +35,7 @@ app/repositories/invitation_repo.py
 app/repositories/knowledge_repo.py
 app/repositories/user_repo.py
 app/schemas/chat.py
+app/schemas/escalation.py
 app/schemas/fact.py
 app/schemas/knowledge.py
 app/schemas/organization.py

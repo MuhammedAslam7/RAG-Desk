@@ -17,6 +17,7 @@ import {
   Users2,
   Bell,
   CreditCard,
+  History 
 } from "lucide-react";
 import { useSidebar } from "@/lib/sidebar-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -30,6 +31,7 @@ const menuItems = [
   { label: "Notifications", icon: Bell, href: "/notifications" },
   { label: "Billing", icon: CreditCard, href: "/billing" },
   { label: "Settings", icon: Settings, href: "/settings" },
+   { label: "All Conversations", icon: History, href: "/conversations/history" }
 ];
 
 export function AppSidebar() {

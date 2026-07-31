@@ -1,24 +1,24 @@
 from collections.abc import AsyncGenerator
 
-from google import genai
+import ollama
 
 from app.core.config import settings
 
-_client = genai.Client(api_key=settings.GOOGLE_GENERATIVE_AI_API_KEY)
+_client = ollama.AsyncClient(host=settings.OLLAMA_BASE_URL)
 
 
-def _build_contents(messages: list[dict]) -> list[dict]:
-    """Convert UI messages ({role, parts:[{text}]}) to Gemini contents."""
-    contents = []
+def _build_messages(system_prompt: str, messages: list[dict]) -> list[dict]:
+    """Convert UI messages ({role, parts:[{text}]}) into Ollama chat messages."""
+    out = [{"role": "system", "content": system_prompt}]
     for m in messages:
         text = " ".join(
             p.get("text", "") for p in m.get("parts", []) if p.get("type") == "text"
         )
         if not text:
             continue
-        role = "user" if m["role"] == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": text}]})
-    return contents
+        role = "user" if m["role"] == "user" else "assistant"
+        out.append({"role": role, "content": text})
+    return out
 
 
 class LLMStreamError(Exception):
@@ -26,35 +26,26 @@ class LLMStreamError(Exception):
 
 
 async def stream_answer(system_prompt: str, messages: list[dict]) -> AsyncGenerator[str, None]:
-    """Yield text tokens as they stream from Gemini.
-
-    Raises LLMStreamError on any failure so callers can send a clean
-    fallback to the client instead of the connection just dying.
-    """
-    contents = _build_contents(messages)
-    if not contents:
+    """Yield text tokens as they stream from the local Ollama model."""
+    chat_messages = _build_messages(system_prompt, messages)
+    if len(chat_messages) <= 1:
         raise LLMStreamError("No usable message content to send to the model")
 
     got_any_text = False
     try:
-        stream = await _client.aio.models.generate_content_stream(
+        stream = await _client.chat(
             model=settings.CHAT_MODEL,
-            contents=contents,
-            config={"system_instruction": system_prompt},
+            messages=chat_messages,
+            stream=True,
         )
         async for chunk in stream:
-            # A chunk can be blocked/empty (safety filters, no candidates, etc.)
-            # without raising — check explicitly rather than assuming chunk.text exists.
-            text = getattr(chunk, "text", None)
+            text = chunk.get("message", {}).get("content")
             if text:
                 got_any_text = True
                 yield text
     except Exception as e:  # noqa: BLE001
-        print("Gemini stream error:", repr(e))
+        print("Ollama stream error:", repr(e))
         raise LLMStreamError(str(e)) from e
 
     if not got_any_text:
-        # Stream completed with zero content — likely blocked by safety filters
-        # or a genuinely empty response. Treat as a failure so the caller can
-        # show something instead of leaving a blank bubble.
         raise LLMStreamError("Model returned an empty response")
