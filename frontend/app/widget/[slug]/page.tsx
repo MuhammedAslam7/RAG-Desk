@@ -35,6 +35,80 @@ const STATUS_LABEL: Record<string, string> = {
   ai_assistant: "AI Assistant",
 };
 
+interface ServerMessage {
+  id: string;
+  sender: string;
+  content: string;
+  createdAt: string;
+}
+
+/**
+ * Merge server-authoritative messages (from /history polling) with the locally
+ * rendered list. The widget renders optimistic copies of messages it just sent
+ * using client-generated ids, while the server stores the same logical messages
+ * under its own ids. Matching by (role, content) lets us swap each optimistic
+ * copy for its server version in place instead of appending duplicates — which
+ * previously made every message appear twice after "Talk to human" escalation.
+ */
+function mergeServerMessages(
+  prev: WidgetMessage[],
+  serverMsgs: ServerMessage[]
+): WidgetMessage[] {
+  const next = [...prev];
+  const used = new Set<string>();
+
+  for (const sm of serverMsgs) {
+    const role =
+      sm.sender === "user" ? "user" : sm.sender === "agent" ? "agent" : "assistant";
+
+    // 1) Exact server id is already rendered — nothing to do.
+    const byId = next.findIndex((m) => m.id === sm.id);
+    if (byId !== -1) {
+      used.add(sm.id);
+      continue;
+    }
+
+    // 2) A local copy with the same role + content (our optimistic send) —
+    //    adopt the server id/createdAt in place so we don't duplicate it.
+    const byContent = next.findIndex(
+      (m) => !used.has(m.id) && m.role === role && m.content === sm.content
+    );
+    if (byContent !== -1) {
+      next[byContent] = { ...next[byContent], id: sm.id, createdAt: sm.createdAt };
+      used.add(sm.id);
+      continue;
+    }
+
+    // 3) The local copy is still mid-stream (its content is a prefix of the
+    //    stored version) — replace it with the complete server copy right away
+    //    so a stream that dies partway never truncates or duplicates.
+    const byPrefix = next.findIndex(
+      (m) =>
+        !used.has(m.id) &&
+        m.role === role &&
+        !!m.content &&
+        m.content.length < sm.content.length &&
+        sm.content.startsWith(m.content)
+    );
+    if (byPrefix !== -1) {
+      next[byPrefix] = {
+        ...next[byPrefix],
+        id: sm.id,
+        content: sm.content,
+        createdAt: sm.createdAt,
+      };
+      used.add(sm.id);
+      continue;
+    }
+
+    // 4) Genuinely new message (e.g. a human agent reply) — append.
+    next.push({ id: sm.id, role, content: sm.content, createdAt: sm.createdAt });
+    used.add(sm.id);
+  }
+
+  return next;
+}
+
 export default function WidgetPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const [config, setConfig] = useState<WidgetConfig | null>(null);
@@ -61,6 +135,13 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
   const autoOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatIdRef = useRef<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const escalatedRef = useRef(false);
+
+  // Keep a ref mirror of `escalated` so async callbacks (e.g. send) never read
+  // a stale closure value between the "Talk to human" click and the re-render.
+  useEffect(() => {
+    escalatedRef.current = escalated;
+  }, [escalated]);
 
   // ── Preview-mode refs ──────────────────────────────────────
   const isPreview = useRef(false);
@@ -201,21 +282,9 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/history?org=${slug}&visitorId=${visitorId}`
       )
         .then((r) => r.json())
-        .then((data: { messages: { id: string; sender: string; content: string; createdAt: string }[] }) => {
+        .then((data: { messages: ServerMessage[] }) => {
           if (data.messages?.length) {
-            setMessages((prev) => {
-              const existingIds = new Set(prev.map((m) => m.id));
-              const newOnes = data.messages
-                .filter((m) => !existingIds.has(m.id))
-                .map((m) => ({
-                  id: m.id,
-                  role: m.sender === "user" ? "user" : m.sender === "agent" ? "agent" : "assistant",
-                  content: m.content,
-                  createdAt: m.createdAt,
-                }));
-              if (newOnes.length === 0) return prev;
-              return [...prev, ...newOnes];
-            });
+            setMessages((prev) => mergeServerMessages(prev, data.messages));
           }
         })
         .catch(() => {});
@@ -378,7 +447,10 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     setMessages((m) => [
       ...m,
       { id: userId, role: "user", content: text },
-      { id: aiId, role: "assistant", content: "" },
+      // Once escalated, the AI no longer replies — human agent answers arrive
+      // through history polling — so don't render a phantom AI bubble (which
+      // also prevented a bogus "Sorry, I didn't get a response" from showing).
+      ...(escalatedRef.current ? [] : [{ id: aiId, role: "assistant", content: "" }]),
     ]);
     setInput("");
 
@@ -451,9 +523,12 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
       }
     } catch (err) {
       console.error("Widget chat error:", err);
+      // If the stream delivered partial text before failing, keep it — the
+      // history poll will replace it with the complete server copy. Only show
+      // an error bubble when nothing at all came back.
       setMessages((m) =>
         m.map((x) =>
-          x.id === aiId
+          x.id === aiId && !x.content
             ? { ...x, content: "Sorry, something went wrong. Please try again." }
             : x
         )

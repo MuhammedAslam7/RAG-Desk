@@ -102,7 +102,7 @@ export default function EscalationManager() {
     return detail.messages.map((m) => (
       <div
         key={m.id}
-        className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
+        className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"} mt-3`}
       >
         <div
           className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm break-words whitespace-pre-wrap ${
