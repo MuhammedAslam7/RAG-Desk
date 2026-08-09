@@ -122,10 +122,14 @@ async def widget_chat(
     await chat_repo.add_message(db, chat.id, "user", body.message, persist=persist)
 
     # ---- If chat is not in active AI mode, just save the message and return ----
-    # This applies to escalated, human_active, and resolved chats.
-    if chat.status != "active":
+    # This applies to escalated, human_active, and resolved chats. We check the
+    # explicit list rather than `status != "active"` so legacy/unknown statuses
+    # (e.g. the old "ai_active" backfill) still get AI replies.
+    if chat.status in ("escalated", "human_active", "resolved"):
+        # Tell the widget why no AI reply is coming so it can switch to
+        # agent mode instead of showing a bogus "no response" error.
         async def passthrough_stream():
-            yield f"data: {json.dumps({'chatId': chat.id})}\n\n"
+            yield f"data: {json.dumps({'chatId': chat.id, 'status': chat.status})}\n\n"
             yield "data: [DONE]\n\n"
         return StreamingResponse(passthrough_stream(), media_type="text/event-stream")
 

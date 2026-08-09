@@ -23,7 +23,7 @@ def upgrade() -> None:
             "status",
             sa.String(),
             nullable=False,
-            server_default="ai_active",
+            server_default="active",
         ),
     )
     op.alter_column("Chat", "status", server_default=None)

@@ -498,6 +498,15 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
             const parsed = JSON.parse(payload);
             if (parsed.chatId) {
               chatIdRef.current = parsed.chatId;
+            }
+            // Chat is in human-handoff mode (escalated / agent takeover /
+            // resolved) — the server intentionally won't stream an AI reply.
+            // Switch the UI to agent mode and drop the phantom AI bubble so we
+            // don't surface a misleading "no response" error.
+            if (parsed.status && parsed.status !== "active") {
+              gotAnyText = true;
+              setEscalated(true);
+              setMessages((m) => m.filter((x) => x.id !== aiId));
               continue;
             }
             if (parsed.text) {

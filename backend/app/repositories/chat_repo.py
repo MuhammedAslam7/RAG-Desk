@@ -122,7 +122,7 @@ async def escalate_chat(db: AsyncSession, chat_id: str) -> Chat | None:
     chat = await db.get(Chat, chat_id)
     if chat is None:
         return None
-    if chat.status != "active":
+    if chat.status in ("escalated", "human_active", "resolved"):
         return chat  # already escalated or resolved
     chat.status = "escalated"
     chat.escalatedAt = datetime.now(timezone.utc)
