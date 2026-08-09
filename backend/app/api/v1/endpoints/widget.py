@@ -14,7 +14,7 @@ from app.repositories import chat_repo
 from app.services.ai.llm import stream_answer, LLMStreamError
 from app.services.facts.service import get_active_facts
 from app.services.rag.prompt import build_system_prompt
-from app.services.rag.retrieval import get_relevant_chunks, rank_by_relevance_and_recency
+from app.services.rag.retrieval import retrieve_relevant_chunks
 from app.schemas.organization import WidgetConfigOut
 from app.schemas.escalation import EscalationResponse
 
@@ -132,8 +132,7 @@ async def widget_chat(
     # --- RAG + facts: never let a retrieval failure kill the whole response ---
     ranked = []
     try:
-        candidates = await get_relevant_chunks(db, body.message, org.id)
-        ranked = rank_by_relevance_and_recency(candidates)
+        ranked = await retrieve_relevant_chunks(db, body.message, org.id)
     except Exception as e:  # noqa: BLE001
         print("Widget RAG error:", repr(e))
 

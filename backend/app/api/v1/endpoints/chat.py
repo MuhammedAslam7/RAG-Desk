@@ -19,10 +19,7 @@ from app.schemas.escalation import (
 from app.services.ai.llm import stream_answer, LLMStreamError
 from app.services.facts.service import get_active_facts
 from app.services.rag.prompt import build_system_prompt
-from app.services.rag.retrieval import (
-    get_relevant_chunks,
-    rank_by_relevance_and_recency,
-)
+from app.services.rag.retrieval import retrieve_relevant_chunks
 
 router = APIRouter()
 
@@ -72,8 +69,7 @@ async def post_chat(
 
     ranked = []
     try:
-        candidates = await get_relevant_chunks(db, user_text, user.organizationId)
-        ranked = rank_by_relevance_and_recency(candidates)
+        ranked = await retrieve_relevant_chunks(db, user_text, user.organizationId)
     except Exception as e:  # noqa: BLE001
         print("RAG error:", e)
 

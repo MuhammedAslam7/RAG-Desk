@@ -1,8 +1,37 @@
+from app.core.config import settings
 from app.services.rag.retrieval import RankedChunk
 
 
 def _fmt_date(d) -> str:
     return d.strftime("%b %d, %Y")
+
+
+def _trim_parent(parent: str, needle: str, cap: int) -> str:
+    """If the parent section is too long, keep a window around the matched
+    child chunk so the LLM gets the surrounding context, not a blind prefix."""
+    if len(parent) <= cap:
+        return parent
+    idx = -1
+    for probe in (needle[:80].strip(), needle[:40].strip(), needle[:20].strip()):
+        if probe:
+            idx = parent.find(probe)
+            if idx != -1:
+                break
+    if idx == -1:
+        return parent[:cap]
+    half = cap // 2
+    start = max(0, idx - half)
+    return parent[start:start + cap]
+
+
+def _display_content(chunk: RankedChunk) -> str:
+    """Prefer the full parent section; fall back to the child chunk itself."""
+    text = chunk.content
+    if chunk.parentContent:
+        text = _trim_parent(chunk.parentContent, chunk.content, settings.PARENT_MAX_CHARS)
+    if chunk.heading:
+        text = f"[Section: {chunk.heading}]\n{text}"
+    return text
 
 
 _LENGTH_INSTRUCTIONS = {
@@ -66,7 +95,7 @@ def build_system_prompt(
     if chunks or facts:
         kb = "\n\n".join(
             f'[{i + 1}] (added {_fmt_date(c.createdAt)}, source: "{c.sourceTitle}")\n'
-            f"{c.content}"
+            f"{_display_content(c)}"
             for i, c in enumerate(chunks)
         )
         return (

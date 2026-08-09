@@ -11,6 +11,7 @@ from app.schemas.knowledge import (
     KnowledgeSourceOut,
     TextIngest,
 )
+from app.services.knowledge.bm25 import bump_bm25_version
 from app.services.knowledge.ingest import ingest_document
 from app.services.knowledge.parsers.crawl import crawl_site
 from app.services.knowledge.parsers.csv_faq import parse_faq_csv
@@ -129,4 +130,5 @@ async def delete_source(
     if src is None:
         raise HTTPException(404, "Source not found")
     await knowledge_repo.delete_source(db, src)
+    bump_bm25_version(user.organizationId)
     return {"success": True}
