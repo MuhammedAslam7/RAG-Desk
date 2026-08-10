@@ -72,6 +72,16 @@ async def post_chat(
         ranked = await retrieve_relevant_chunks(db, user_text, user.organizationId)
     except Exception as e:  # noqa: BLE001
         print("RAG error:", e)
+         # --- TEMP DEBUG: inspect what got retrieved ---
+    print(f"\n[DEBUG] Query: {user_text!r}")
+    print(f"[DEBUG] Retrieved {len(ranked)} chunks")
+    for i, chunk in enumerate(ranked):
+        score = getattr(chunk, "score", None)
+        rerank_score = getattr(chunk, "rerank_score", None)
+        content = getattr(chunk, "content", str(chunk))
+        print(f"  [{i}] score={score} rerank={rerank_score} | {content[:150]!r}")
+    print("[DEBUG] --- end chunks ---\n")
+    # --- END TEMP DEBUG ---
 
     facts = []
     try:

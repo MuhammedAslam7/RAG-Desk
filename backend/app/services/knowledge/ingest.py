@@ -30,7 +30,7 @@ async def ingest_document(
             embedding=c.embedding if c.embedding is not None else embedding_by_chunk[id(c)],
             organizationId=org_id,
             knowledgeSourceId=source.id,
-            parent_content=c.parent_content or c.content,
+            parentContent=c.parentContent or c.content,
             heading=c.heading or None,
         ))
 

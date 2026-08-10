@@ -35,7 +35,7 @@ class KnowledgeChunk(Base):
 
     # Parent-child chunking: the small embedded ``content`` lives inside
     # ``parent_content`` (the full structure-aware section it came from).
-    parent_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parentContent: Mapped[str | None] = mapped_column("parent_content", Text, nullable=True)
     heading: Mapped[str | None] = mapped_column(String, nullable=True)
 
     source: Mapped["KnowledgeSource"] = relationship(back_populates="chunks")

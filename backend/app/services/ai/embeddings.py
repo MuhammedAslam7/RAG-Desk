@@ -1,71 +1,90 @@
-import asyncio
-import random
-import re
-import threading
-import time
-from collections import OrderedDict
+"""Local embedding service using Qwen3-Embedding-0.6B via sentence-transformers.
 
-from google import genai
-from google.genai import errors as genai_errors
+No external API, no rate limit, no per-token cost. The model is loaded lazily
+(first request) and truncated to EMBED_DIM via Matryoshka Representation
+Learning, so it drops into the existing 768-dim pgvector column unchanged.
+
+Encoding is CPU/GPU-bound synchronous work, so every call runs inside
+asyncio.to_thread to avoid blocking the event loop — same pattern already
+used for the cross-encoder reranker in app/services/rag/rerank.py.
+"""
+
+import asyncio
+import threading
+from collections import OrderedDict
+from functools import lru_cache
 
 from app.core.config import settings
 
-_client = genai.Client(api_key=settings.GOOGLE_GENERATIVE_AI_API_KEY)
-
 
 class EmbeddingRateLimitError(Exception):
-    """Raised when the embedding API stays rate-limited after all retries."""
+    """Kept only for API compatibility with callers (e.g. main.py's exception
+    handler). A local model has no external quota, so this should not fire
+    in normal operation — it's retained in case model loading itself fails
+    repeatedly (e.g. out of memory) and callers want a distinct error type."""
 
     def __init__(self, retry_after: float = 0.0):
         self.retry_after = retry_after
-        super().__init__(f"Embedding API rate limit exceeded (retry after ~{retry_after:.0f}s)")
+        super().__init__(f"Local embedding model unavailable (retry after ~{retry_after:.0f}s)")
 
 
 # ---------------------------------------------------------------------------
-# Pacing — Gemini's free tier allows ~100 embed_content calls/minute/model.
-# A token bucket in front of every request keeps the whole process safely
-# under that ceiling (the bucket starts full for an instant burst, then
-# refills at EMBED_RATE_PER_MIN/minute).
+# Lazy model load — first call pays the cost (weights download + load into
+# memory), every call after reuses the cached instance.
 # ---------------------------------------------------------------------------
 
-class _TokenBucket:
-    def __init__(self, rate_per_min: int):
-        self.rate = max(1.0, float(rate_per_min))
-        self.capacity = self.rate
-        self.tokens = self.capacity
-        self.updated = time.monotonic()
-        self.lock = asyncio.Lock()
+@lru_cache(maxsize=1)
+def _load_model():
+    from sentence_transformers import SentenceTransformer
 
-    async def acquire(self) -> None:
-        while True:
-            async with self.lock:
-                now = time.monotonic()
-                elapsed = now - self.updated
-                self.tokens = min(self.capacity, self.tokens + elapsed * self.rate / 60.0)
-                self.updated = now
-                if self.tokens >= 1.0:
-                    self.tokens -= 1.0
-                    return
-                wait = (1.0 - self.tokens) * 60.0 / self.rate
-            await asyncio.sleep(max(wait, 0.02))
+    return SentenceTransformer(
+        settings.EMBED_MODEL,
+        truncate_dim=settings.EMBED_DIM,
+        device=settings.EMBED_DEVICE,
+    )
 
 
-_LIMITER: _TokenBucket | None = None
-_LIMITER_GUARD = threading.Lock()
+_LOAD_LOCK: asyncio.Lock | None = None
+_ENCODE_LOCK: asyncio.Lock | None = None
+_LOCK_GUARD = threading.Lock()
 
 
-def _get_limiter() -> _TokenBucket:
-    global _LIMITER
-    if _LIMITER is None:
-        with _LIMITER_GUARD:
-            if _LIMITER is None:
-                _LIMITER = _TokenBucket(settings.EMBED_RATE_PER_MIN)
-    return _LIMITER
+def _locks() -> tuple[asyncio.Lock, asyncio.Lock]:
+    """Create the locks lazily so they bind to the event loop that actually
+    uses them, matching the pattern in rerank.py."""
+    global _LOAD_LOCK, _ENCODE_LOCK
+    with _LOCK_GUARD:
+        if _LOAD_LOCK is None:
+            _LOAD_LOCK = asyncio.Lock()
+            _ENCODE_LOCK = asyncio.Lock()
+    return _LOAD_LOCK, _ENCODE_LOCK
+
+
+def _encode_query_sync(model, texts: list[str]) -> list[list[float]]:
+    vectors = model.encode(
+        texts,
+        prompt_name="query",         # Qwen3's built-in retrieval-query instruction
+        batch_size=settings.EMBED_BATCH_SIZE,
+        normalize_embeddings=True,
+        show_progress_bar=False,
+    )
+    return [v.tolist() for v in vectors]
+
+
+def _encode_document_sync(model, texts: list[str]) -> list[list[float]]:
+    vectors = model.encode(
+        texts,                       # no prompt for documents — asymmetric retrieval
+        batch_size=settings.EMBED_BATCH_SIZE,
+        normalize_embeddings=True,
+        show_progress_bar=False,
+    )
+    return [v.tolist() for v in vectors]
 
 
 # ---------------------------------------------------------------------------
-# LRU dedupe cache — repeated paragraphs/chunks (very common in pasted text,
-# FAQs, crawled pages) embed once and are reused within the process.
+# LRU dedupe cache — unchanged in spirit from the Gemini version. Repeated
+# paragraphs (FAQs, crawled pages) embed once and are reused within the
+# process.
 # ---------------------------------------------------------------------------
 
 _CACHE: OrderedDict[str, list[float]] = OrderedDict()
@@ -89,89 +108,59 @@ def _cache_set(key: str, value: list[float]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Retry with backoff — honors the server's retryDelay for 429s and uses
-# exponential backoff (with jitter) for transient 5xx / network errors.
+# Public API — same names/signatures as the Gemini and Ollama versions, so
+# ingest.py and retrieval.py need no changes.
 # ---------------------------------------------------------------------------
 
-_RETRY_DELAY_RE = re.compile(r"retryDelay['\"]?\s*:\s*['\"]([\d.]+)s['\"]")
-
-
-def _retry_delay_from(exc: Exception) -> float:
-    m = _RETRY_DELAY_RE.search(str(exc))
-    try:
-        return float(m.group(1)) if m else 0.0
-    except (ValueError, AttributeError):
-        return 0.0
-
-
-async def _embed_with_retry(task_type: str, text: str) -> list[float]:
-    key = _cache_key(task_type, text)
+async def embed_query(text: str) -> list[float]:
+    """Embed a single search query."""
+    key = _cache_key("query", text)
     cached = _cache_get(key)
     if cached is not None:
         return cached
 
-    limiter = _get_limiter()
-    last_exc: Exception | None = None
+    load_lock, encode_lock = _locks()
+    async with load_lock:
+        model = await asyncio.to_thread(_load_model)
+    async with encode_lock:
+        result = await asyncio.to_thread(_encode_query_sync, model, [text])
 
-    for attempt in range(settings.EMBED_RETRY_MAX + 1):
-        await limiter.acquire()
-        try:
-            result = await _client.aio.models.embed_content(
-                model=settings.EMBED_MODEL,
-                contents=text,
-                config={
-                    "task_type": task_type,
-                    "output_dimensionality": settings.EMBED_DIM,
-                },
-            )
-            embedding = list(result.embeddings[0].values)
-            _cache_set(key, embedding)
-            return embedding
-        except genai_errors.ClientError as e:
-            if e.status_code == 429:
-                last_exc = e
-                delay = _retry_delay_from(e) or 20.0
-            elif 500 <= e.status_code < 600:
-                last_exc = e
-                delay = float(2 ** attempt)
-            else:
-                raise  # auth/config errors — no point retrying
-        except Exception as e:  # noqa: BLE001 — network timeouts, etc.
-            last_exc = e
-            delay = float(2 ** attempt)
-
-        jitter = delay * (0.8 + random.random() * 0.4)
-        print(f"[embed] {type(last_exc).__name__} ({last_exc}); retry {attempt + 1}/{settings.EMBED_RETRY_MAX} in {jitter:.0f}s")
-        await asyncio.sleep(min(jitter, 60.0))
-
-    if last_exc is None:  # defensive — unreachable, but keeps the invariant explicit
-        raise RuntimeError("embedding retry loop exhausted without a failure")
-    if isinstance(last_exc, genai_errors.ClientError) and last_exc.status_code == 429:
-        raise EmbeddingRateLimitError(_retry_delay_from(last_exc)) from last_exc
-    raise last_exc
-
-
-async def embed_query(text: str) -> list[float]:
-    """Embed a search query (RETRIEVAL_QUERY task type)."""
-    return await _embed_with_retry("RETRIEVAL_QUERY", text)
+    embedding = result[0]
+    _cache_set(key, embedding)
+    return embedding
 
 
 async def embed_document(text: str) -> list[float]:
-    """Embed a document chunk (RETRIEVAL_DOCUMENT task type)."""
-    return await _embed_with_retry("RETRIEVAL_DOCUMENT", text)
+    """Embed a single document chunk."""
+    results = await embed_documents([text])
+    return results[0]
 
 
 async def embed_documents(texts: list[str], concurrency: int | None = None) -> list[list[float]]:
-    """Embed many texts in parallel (capped), pacing each request under the
-    per-minute quota. Used for the micro-unit embeddings that drive semantic
-    chunking and for batched storage embeddings."""
+    """Embed many texts. Unlike the API-based versions, this does NOT fan
+    out into N concurrent requests — it batches everything into as few
+    model.encode() calls as possible, which is far more efficient for a
+    local model than issuing many small calls. `concurrency` is accepted
+    for signature compatibility but unused."""
     if not texts:
         return []
-    limit = concurrency or settings.EMBED_MAX_CONCURRENCY
-    sem = asyncio.Semaphore(limit)
 
-    async def one(text: str) -> list[float]:
-        async with sem:
-            return await embed_document(text)
+    # Split into cached vs. uncached up front so identical repeated chunks
+    # (common in FAQs / crawled pages) never touch the model at all.
+    keys = [_cache_key("document", t) for t in texts]
+    cached = [_cache_get(k) for k in keys]
+    to_embed_idx = [i for i, c in enumerate(cached) if c is None]
 
-    return list(await asyncio.gather(*(one(t) for t in texts)))
+    if to_embed_idx:
+        load_lock, encode_lock = _locks()
+        async with load_lock:
+            model = await asyncio.to_thread(_load_model)
+        async with encode_lock:
+            fresh = await asyncio.to_thread(
+                _encode_document_sync, model, [texts[i] for i in to_embed_idx]
+            )
+        for idx, vec in zip(to_embed_idx, fresh):
+            cached[idx] = vec
+            _cache_set(keys[idx], vec)
+
+    return cached  # type: ignore[return-value]
