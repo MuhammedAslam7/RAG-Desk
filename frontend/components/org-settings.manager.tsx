@@ -34,8 +34,6 @@ import {
   Smile,
   ShieldCheck,
   Settings2,
-  PanelRightOpen,
-  PanelRightClose,
   Menu,
   X,
   ChevronLeft,
@@ -285,7 +283,7 @@ function ColorPickerField({
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="#3b82f6"
-                  className="bg-input border-border font-mono text-sm flex-1"
+                  className="bg-input border-border font-mono text-sm flex-1 h-9"
                 />
               </div>
             </div>
@@ -346,6 +344,42 @@ function ToggleField({
         />
       </span>
     </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// SectionCard — consistent card with icon, title, description
+// ─────────────────────────────────────────────────────────────
+function SectionCard({
+  id,
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  id: string;
+  icon: React.ElementType;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card id={id} className="border-border bg-card overflow-hidden scroll-mt-24">
+      <div className="border-b border-border px-6 py-5">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Icon className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-foreground">{title}</h2>
+            {description && (
+              <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="p-6">{children}</div>
+    </Card>
   );
 }
 
@@ -455,6 +489,19 @@ export default function OrgSettingsManager() {
     }
   };
 
+  const handleDiscard = () => {
+    if (org) setForm(org.settings);
+    setDirty(false);
+    setSaved(false);
+  };
+
+  // Auto-dismiss the "All changes saved" pill
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 3000);
+    return () => clearTimeout(t);
+  }, [saved]);
+
   // Scroll to a section
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -474,9 +521,13 @@ export default function OrgSettingsManager() {
   return (
     <div className="h-full w-full bg-background flex flex-col relative">
       <h1 className="sr-only">Workspace Settings</h1>
-      {/* ── Toolbar (page actions only) ─────────────────────── */}
-      <div className="border-b border-border px-6 h-12 flex items-center justify-end flex-shrink-0">
-        <div className="flex items-center gap-2">
+      {/* ── Header ───────────────────────────────────────────── */}
+      <div className="border-b border-border px-6 h-14 flex items-center justify-between gap-4 flex-shrink-0 bg-card/50">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-foreground tracking-tight">Settings</h2>
+          <p className="text-xs text-muted-foreground truncate">{org.name} · {org.slug}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* ── Mobile hamburger toggle ── */}
           <button
             type="button"
@@ -552,9 +603,9 @@ export default function OrgSettingsManager() {
                   /* ── Expanded mode: group header + labeled items ── */
                   return (
                     <div key={group.group} className="mb-4 px-2">
-                      <div className="flex items-center gap-2 bg-gray-400 rounded px-2 py-1 mb-1.5">
-                        <GroupIcon className="h-3.5 w-3.5" />
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-black">
+                      <div className="flex items-center gap-2 px-2.5 pt-3 pb-1.5">
+                        <GroupIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {group.group}
                         </span>
                       </div>
@@ -708,18 +759,12 @@ export default function OrgSettingsManager() {
 
         {/* ── Left: settings form ─────────────────────────────── */}
         <div ref={contentRef} className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-6 py-6 space-y-6 pb-28">
+          <div className="max-w-3xl mx-auto px-6 py-8 space-y-8 pb-32">
             {/* Embed Snippet - always at top, not in sidebar */}
             <EmbedSnippet slug={org.slug} position={org.settings.widgetPosition || "bottom-right"} />
 
             {/* ── Widget Appearance ─────────────────────────────── */}
-            <Card id="widget-appearance" className="border-border bg-card p-6 scroll-mt-20">
-              <div className="flex items-center gap-2 mb-6">
-                <Palette className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">
-                  Widget Appearance
-                </h2>
-              </div>
+            <SectionCard id="widget-appearance" icon={Palette} title="Widget Appearance" description="Branding, colors, position, and language of your chat widget.">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -879,14 +924,10 @@ export default function OrgSettingsManager() {
                   </select>
                 </div>
               </div>
-            </Card>
+            </SectionCard>
 
             {/* ── Header ────────────────────────────────────────── */}
-            <Card id="widget-header" className="border-border bg-card p-6 scroll-mt-20">
-              <div className="flex items-center gap-2 mb-6">
-                <LayoutTemplate className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Header</h2>
-              </div>
+            <SectionCard id="widget-header" icon={LayoutTemplate} title="Header" description="Your bot's name, avatar, status text, and header colors.">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -896,7 +937,7 @@ export default function OrgSettingsManager() {
                     value={form.botName ?? ""}
                     onChange={(e) => handleChange("botName", e.target.value)}
                     placeholder="Support AI"
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                 </div>
                 <div>
@@ -921,7 +962,7 @@ export default function OrgSettingsManager() {
                     value={form.botAvatarUrl ?? ""}
                     onChange={(e) => handleChange("botAvatarUrl", e.target.value)}
                     placeholder="https://…"
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                 </div>
                 <div>
@@ -932,7 +973,7 @@ export default function OrgSettingsManager() {
                     value={form.companyLogoUrl ?? ""}
                     onChange={(e) => handleChange("companyLogoUrl", e.target.value)}
                     placeholder="https://…"
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                 </div>
                 <div>
@@ -968,14 +1009,10 @@ export default function OrgSettingsManager() {
                   label="Show close button"
                 />
               </div>
-            </Card>
+            </SectionCard>
 
             {/* ── Welcome Screen ───────────────────────────────── */}
-            <Card id="widget-welcome" className="border-border bg-card p-6 scroll-mt-20">
-              <div className="flex items-center gap-2 mb-6">
-                <Hand className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Welcome Screen</h2>
-              </div>
+            <SectionCard id="widget-welcome" icon={Hand} title="Welcome Screen" description="The greeting visitors see before starting a chat.">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -985,7 +1022,7 @@ export default function OrgSettingsManager() {
                     value={form.welcomeTitle ?? ""}
                     onChange={(e) => handleChange("welcomeTitle", e.target.value)}
                     placeholder="Hello 👋"
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                 </div>
                 <div>
@@ -1018,18 +1055,14 @@ export default function OrgSettingsManager() {
                     value={form.startChatButtonText ?? ""}
                     onChange={(e) => handleChange("startChatButtonText", e.target.value)}
                     placeholder="Start Chat"
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                 </div>
               </div>
-            </Card>
+            </SectionCard>
 
             {/* ── Chat Behavior ────────────────────────────────── */}
-            <Card id="widget-behavior" className="border-border bg-card p-6 scroll-mt-20">
-              <div className="flex items-center gap-2 mb-6">
-                <Zap className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Chat Behavior</h2>
-              </div>
+            <SectionCard id="widget-behavior" icon={Zap} title="Chat Behavior" description="Auto-open triggers and how the chat window behaves.">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -1045,7 +1078,7 @@ export default function OrgSettingsManager() {
                         e.target.value === "" ? null : Number(e.target.value)
                       )
                     }
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                 </div>
                 <div>
@@ -1062,7 +1095,7 @@ export default function OrgSettingsManager() {
                         e.target.value === "" ? null : Number(e.target.value)
                       )
                     }
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                 </div>
                 <ToggleField
@@ -1091,14 +1124,10 @@ export default function OrgSettingsManager() {
                   label="Keep widget open after page change"
                 />
               </div>
-            </Card>
+            </SectionCard>
 
             {/* ── Messages ──────────────────────────────────────── */}
-            <Card id="widget-messages" className="border-border bg-card p-6 scroll-mt-20">
-              <div className="flex items-center gap-2 mb-6">
-                <MessagesSquare className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Messages</h2>
-              </div>
+            <SectionCard id="widget-messages" icon={MessagesSquare} title="Messages" description="Bubble colors, timestamps, and message details.">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -1161,14 +1190,10 @@ export default function OrgSettingsManager() {
                   label="AI thinking animation"
                 />
               </div>
-            </Card>
+            </SectionCard>
 
             {/* ── AI Behavior ───────────────────────────────────── */}
-            <Card id="ai-behavior" className="border-border bg-card p-6 scroll-mt-20">
-              <div className="flex items-center gap-2 mb-6">
-                <Bot className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">AI Behavior</h2>
-              </div>
+            <SectionCard id="ai-behavior" icon={Bot} title="AI Behavior" description="Tone, response length, and personality of your AI assistant.">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -1178,7 +1203,7 @@ export default function OrgSettingsManager() {
                     value={form.aiName ?? ""}
                     onChange={(e) => handleChange("aiName", e.target.value)}
                     placeholder="AI Assistant"
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                 </div>
                 <div>
@@ -1243,14 +1268,10 @@ export default function OrgSettingsManager() {
               <p className="text-xs text-muted-foreground mt-3">
                 Language is controlled by the Response language field in Widget Appearance above.
               </p>
-            </Card>
+            </SectionCard>
 
             {/* ── Conversation Settings ───────────────────────── */}
-            <Card id="conversation" className="border-border bg-card p-6 scroll-mt-20">
-              <div className="flex items-center gap-2 mb-6">
-                <ClipboardList className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Conversation Settings</h2>
-              </div>
+            <SectionCard id="conversation" icon={ClipboardList} title="Conversation Settings" description="Contact fields and how visitor history is collected.">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ToggleField
                   checked={form.askVisitorName ?? false}
@@ -1287,16 +1308,10 @@ export default function OrgSettingsManager() {
                 If any of the fields above are required and anonymous chat is disabled, visitors
                 must fill them in before they can send a message.
               </p>
-            </Card>
+            </SectionCard>
 
             {/* ── Security ──────────────────────────────────────── */}
-            <Card id="security" className="border-border bg-card p-6 scroll-mt-20">
-              <div className="flex items-center gap-2 mb-6">
-                <Globe className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">
-                  Website &amp; Security
-                </h2>
-              </div>
+            <SectionCard id="security" icon={Globe} title="Website & Security" description="Restrict where your widget can be embedded.">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -1306,7 +1321,7 @@ export default function OrgSettingsManager() {
                     placeholder="https://yourbusiness.com"
                     value={form.websiteUrl ?? ""}
                     onChange={(e) => handleChange("websiteUrl", e.target.value)}
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                 </div>
                 <div>
@@ -1317,7 +1332,7 @@ export default function OrgSettingsManager() {
                     placeholder="yourbusiness.com, www.yourbusiness.com"
                     value={form.allowedDomains ?? ""}
                     onChange={(e) => handleChange("allowedDomains", e.target.value)}
-                    className="bg-input border-border"
+                    className="bg-input border-border h-9"
                   />
                   <p className="text-xs text-muted-foreground mt-2">
                     Comma-separated. The widget will only respond to requests
@@ -1326,33 +1341,26 @@ export default function OrgSettingsManager() {
                   </p>
                 </div>
               </div>
-            </Card>
+            </SectionCard>
 
             {/* ── Fallback ──────────────────────────────────────── */}
-            <Card id="fallback" className="border-border bg-card p-6 scroll-mt-20">
-              <div className="flex items-center gap-2 mb-6">
-                <MessageSquare className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">
-                  Fallback
-                </h2>
-              </div>
+            <SectionCard id="fallback" icon={MessageSquare} title="Fallback" description="Where to route questions your AI can't answer.">
               <div className="max-w-md">
                 <label className="block text-sm font-medium text-foreground mb-2">
                   Fallback contact email
                 </label>
                 <Input
                   type="email"
-                  placeholder="support@yourbusiness.com"
-                  value={form.fallbackEmail ?? ""}
-                  onChange={(e) => handleChange("fallbackEmail", e.target.value)}
-                  className="bg-input border-border"
+                  placeholder="support@yourbusiness.com"                    value={form.fallbackEmail ?? ""}
+                    onChange={(e) => handleChange("fallbackEmail", e.target.value)}
+                    className="bg-input border-border h-9"
                 />
                 <p className="text-xs text-muted-foreground mt-2">
                   Where you&apos;d like to be notified when the AI can&apos;t
                   answer a visitor&apos;s question.
                 </p>
               </div>
-            </Card>
+            </SectionCard>
           </div> {/* close max-w-4xl */}
         </div> {/* close flex-1 overflow-auto (left panel) */}
 
@@ -1484,27 +1492,34 @@ export default function OrgSettingsManager() {
         </div>
       )}
 
-      {/* Floating save button — always reachable, no scrolling to the bottom */}
-      <div className="absolute bottom-6 right-24 flex items-center gap-3">
-        {saved && !dirty && (
-          <span className="text-sm text-muted-foreground bg-card border border-border rounded-full px-3 py-1.5 shadow-lg">
-            Saved ✓
+      {/* Unsaved-changes pill — appears only when there are changes */}
+      {(dirty || saved) && (
+        <div className="absolute bottom-24 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full border border-border bg-popover py-1.5 pl-4 pr-1.5 shadow-xl max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <span className="text-xs text-muted-foreground">
+            {saved && !dirty ? "All changes saved" : "Unsaved changes"}
           </span>
-        )}
-        <Button
-          onClick={handleSave}
-          disabled={saving || !dirty}
-          size="lg"
-          className="gap-2 bg-primary hover:bg-primary/90 shadow-xl disabled:opacity-60"
-        >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
+          {dirty && (
+            <>
+              <Button size="sm" variant="ghost" onClick={handleDiscard} disabled={saving}>
+                Discard
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={saving}
+                className="gap-1.5"
+              >
+                {saving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
+                Save
+              </Button>
+            </>
           )}
-          Save Settings
-        </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
