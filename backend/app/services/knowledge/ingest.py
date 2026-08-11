@@ -26,13 +26,13 @@ async def ingest_document(
 
     for c in chunks:
         db.add(KnowledgeChunk(
-            content=c.content,
-            embedding=c.embedding if c.embedding is not None else embedding_by_chunk[id(c)],
-            organizationId=org_id,
-            knowledgeSourceId=source.id,
-            parentContent=c.parentContent or c.content,
-            heading=c.heading or None,
-        ))
+        content=c.content,
+        embedding=c.embedding if c.embedding is not None else embedding_by_chunk[id(c)],
+        organizationId=org_id,
+        knowledgeSourceId=source.id,
+        parentContent=c.parent_content or c.content,
+        heading=c.heading or None,
+    ))
 
     await db.commit()
     await db.refresh(source)

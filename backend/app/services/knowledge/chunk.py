@@ -2,10 +2,10 @@
 
 Three layers, in order of processing:
 
-1. Structure-aware splitting — markdown headings, fenced code blocks, tables and
-   horizontal rules are respected. Code blocks and tables are treated as atomic
-   units and never split mid-block. Each resulting piece becomes a *parent*
-   section.
+1. Structure-aware splitting — markdown headings, numbered headings, fenced
+   code blocks, tables and horizontal rules are respected. Code blocks and
+   tables are treated as atomic units and never split mid-block. Each
+   resulting piece becomes a *parent* section.
 2. Embedding-based semantic chunking — long sections are split into sentence
    micro-units, each is embedded, and units are merged until the cosine
    similarity between adjacent units drops below a threshold (a topic shift).
@@ -40,14 +40,16 @@ _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
 _FENCE_RE = re.compile(r"^(`{3,}|~{3,})")
 _HR_RE = re.compile(r"^\s*(?:[-*_]\s*){3,}$")
 _TABLE_LINE_RE = re.compile(r"^\s*\|.*\|\s*$")
+_NUMBERED_HEADING_RE = re.compile(r"^(\d+(?:\.\d+)*)\.?\s+([A-Z][A-Za-z0-9 &/,'\-]{2,80})$")
 
 
 def _split_sections(text: str) -> list[tuple[str, str]]:
     """Split text into ``(heading_path, content)`` sections.
 
-    Markdown headings open a new section (nested headings extend the path).
-    Fenced code blocks, consecutive table rows, and horizontal rules are kept
-    atomic — headings inside code blocks are ignored.
+    Markdown headings (``# Title``) and numbered headings (``1. Title``,
+    ``4.3 Title``) both open a new section (nested markdown headings extend
+    the path). Fenced code blocks, consecutive table rows, and horizontal
+    rules are kept atomic — headings inside code blocks are ignored.
     """
     lines = text.split("\n")
     sections: list[tuple[str, str]] = []
@@ -90,6 +92,15 @@ def _split_sections(text: str) -> list[tuple[str, str]]:
                 heading = f"{heading} > {title}"
             else:
                 heading = title
+            i += 1
+            continue
+
+        # --- numbered heading (e.g. "4.3 API Rate Limits"): new section ---
+        nm = _NUMBERED_HEADING_RE.match(stripped)
+        if nm:
+            flush()
+            number, title = nm.group(1), nm.group(2).strip()
+            heading = f"{number} {title}"
             i += 1
             continue
 

@@ -152,7 +152,7 @@ def _finalize(candidates: list[RankedChunk], top_k: int) -> list[RankedChunk]:
     seen: set[str] = set()
     out: list[RankedChunk] = []
     for c in ordered:
-        key = c.parentContent or c.content
+        key = c.content
         if key in seen:
             continue
         seen.add(key)
@@ -216,6 +216,11 @@ async def retrieve_relevant_chunks(
                 fusionScore=fus_score,
             )
         )
+    print(f"[retrieval-debug] {len(candidates)} candidates before dedup, question={question!r}")
+    for c in candidates:
+        parent_preview = (c.parentContent or "")[:60]
+        print(f"    fusion={c.fusionScore:.4f} heading={c.heading!r} parent={parent_preview!r} child={c.content[:60]!r}")
+    # --- END TEMP DEBUG ---
 
     await _rerank_candidates(question, candidates)
     return _finalize(candidates, top_k)
