@@ -473,16 +473,9 @@ export default function OrgSettingsManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col relative">
-      {/* ── Header ───────────────────────────────────────────── */}
-      <div className="border-b border-border px-6 py-4 flex items-center justify-between flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            Workspace Settings
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {org.name} &middot; <span className="font-mono text-xs">{org.slug}</span>
-          </p>
-        </div>
+      <h1 className="sr-only">Workspace Settings</h1>
+      {/* ── Toolbar (page actions only) ─────────────────────── */}
+      <div className="border-b border-border px-6 h-12 flex items-center justify-end flex-shrink-0">
         <div className="flex items-center gap-2">
           {/* ── Mobile hamburger toggle ── */}
           <button

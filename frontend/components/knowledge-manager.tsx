@@ -74,14 +74,7 @@ export default function KnowledgeManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      {/* Header */}
-      <div className="border-b border-border px-8 py-6">
-        <h1 className="text-3xl font-bold text-foreground mb-1">Knowledge Base</h1>
-        <p className="text-muted-foreground">
-          Add documents, FAQs, and content your AI will use to answer questions
-        </p>
-      </div>
-
+      <h1 className="sr-only">Knowledge Base</h1>
       {/* Content */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">

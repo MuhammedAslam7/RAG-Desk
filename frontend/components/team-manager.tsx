@@ -43,11 +43,7 @@ export default function TeamManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <div className="border-b border-border px-8 py-6">
-        <h1 className="text-3xl font-bold text-foreground mb-1">Team</h1>
-        <p className="text-muted-foreground">Invite teammates and manage their access</p>
-      </div>
-
+      <h1 className="sr-only">Team</h1>
       <div className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto px-8 py-8 space-y-8">
           <Card className="border-border bg-card p-6">

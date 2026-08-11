@@ -45,24 +45,7 @@ export default function AllConversations() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <div className="border-b border-border px-8 py-6 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-1">All Conversations</h1>
-          <p className="text-muted-foreground">
-            Every widget conversation — {sessions.length} total
-          </p>
-        </div>
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search visitor or message..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-input border-border"
-          />
-        </div>
-      </div>
-
+      <h1 className="sr-only">All Conversations</h1>
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
           {loading ? (
@@ -82,6 +65,15 @@ export default function AllConversations() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-3">
+                <div className="relative w-full max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search visitor or message..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 bg-input border-border"
+                  />
+                </div>
                 {filtered.map((s) => (
                   <Card
                     key={s.chatId}

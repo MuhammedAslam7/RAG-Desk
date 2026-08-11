@@ -59,28 +59,23 @@ export default function FactsManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      {/* Header */}
-      <div className="border-b border-border px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-1">
-              Verified Facts
-            </h1>
-            <p className="text-muted-foreground">
-              Pin important information your AI should always trust over documents
-            </p>
-          </div>
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button
-                onClick={openCreate}
-                className="gap-2 bg-primary hover:bg-primary/90"
-              >
-                <Plus className="h-4 w-4" />
-                Add Fact
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="border-border bg-card">
+      <h1 className="sr-only">Verified Facts</h1>
+      {/* Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-6xl mx-auto px-8 py-8">
+          {/* Toolbar */}
+          <div className="flex justify-end mb-4">
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  onClick={openCreate}
+                  className="gap-2 bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Fact
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="border-border bg-card">
               <DialogHeader>
                 <DialogTitle className="text-foreground">
                   {editingId ? "Edit Fact" : "Add New Fact"}
@@ -135,14 +130,10 @@ export default function FactsManager() {
                   )}
                 </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto px-8 py-8">
           {facts.length === 0 ? (
             <Card className="border-border bg-card/50 p-12 text-center">
               <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

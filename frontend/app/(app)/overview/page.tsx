@@ -158,27 +158,7 @@ export default function Overview() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      {/* Header */}
-      <div className="border-b border-border px-8 py-6 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-1">
-            Welcome, {data.orgName}
-          </h1>
-          <p className="text-muted-foreground">
-            Here&apos;s how your AI assistant is doing.
-          </p>
-        </div>
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search conversations..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-input border-border"
-          />
-        </div>
-      </div>
-
+      <h1 className="sr-only">Overview</h1>
       <div className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto px-8 py-8 space-y-8">
           {/* Onboarding empty state */}
@@ -415,7 +395,18 @@ export default function Overview() {
           {/* Recent conversations + activity */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="border-border bg-card p-6">
-              <h2 className="text-sm font-semibold text-foreground mb-4">Recent conversations</h2>
+              <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+                <h2 className="text-sm font-semibold text-foreground">Recent conversations</h2>
+                <div className="relative w-full sm:w-56">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 bg-input border-border h-8 text-xs"
+                  />
+                </div>
+              </div>
               {filteredConversations.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">
                   No conversations match yet.

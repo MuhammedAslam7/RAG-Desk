@@ -152,15 +152,7 @@ export default function EscalationManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <div className="border-b border-border px-8 py-6">
-        <h1 className="text-3xl font-bold text-foreground mb-1">
-          Customer Conversations
-        </h1>
-        <p className="text-muted-foreground">
-          Live conversations — <span className="text-amber-500 font-medium">{chats.length}</span> waiting for attention
-        </p>
-      </div>
-
+      <h1 className="sr-only">Customer Conversations</h1>
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
           {loading ? (
