@@ -1485,7 +1485,7 @@ export default function OrgSettingsManager() {
       )}
 
       {/* Floating save button — always reachable, no scrolling to the bottom */}
-      <div className="absolute bottom-6 right-8 flex items-center gap-3">
+      <div className="absolute bottom-6 right-24 flex items-center gap-3">
         {saved && !dirty && (
           <span className="text-sm text-muted-foreground bg-card border border-border rounded-full px-3 py-1.5 shadow-lg">
             Saved ✓

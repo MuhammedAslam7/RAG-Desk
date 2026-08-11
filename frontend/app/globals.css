@@ -162,6 +162,42 @@
   }
 }
 
+/* Light theme for the dashboard — applied via the theme toggle */
+.light {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f1f2;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #e0f2fe;
+  --accent-foreground: #075985;
+  --destructive: #ef4444;
+  --border: #e4e4e7;
+  --input: #f4f4f5;
+  --ring: #3b82f6;
+  --chart-1: #3b82f6;
+  --chart-2: #0ea5e9;
+  --chart-3: #06b6d4;
+  --chart-4: #10b981;
+  --chart-5: #f59e0b;
+  --sidebar: #f8fafc;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef2ff;
+  --sidebar-accent-foreground: #3b82f6;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #3b82f6;
+}
+
 /* Light theme override — applied only inside the widget when theme=light/auto-resolves-light */
 .widget-light {
   color-scheme: light;
