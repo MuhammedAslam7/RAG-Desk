@@ -25,6 +25,7 @@ import {
   MessagesSquare,
   Bot,
   ClipboardList,
+  Code2,
   Eye,
   EyeOff,
   RotateCcw,
@@ -66,6 +67,11 @@ interface SidebarGroup {
 }
 
 const SIDEBAR_GROUPS: SidebarGroup[] = [
+  {
+    group: "Install",
+    icon: Code2,
+    items: [{ id: "install", label: "Installation", icon: Code2 }],
+  },
   {
     group: "Widget",
     icon: Paintbrush,
@@ -760,8 +766,10 @@ export default function OrgSettingsManager() {
         {/* ── Left: settings form ─────────────────────────────── */}
         <div ref={contentRef} className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-8 pb-32">
-            {/* Embed Snippet - always at top, not in sidebar */}
-            <EmbedSnippet slug={org.slug} position={org.settings.widgetPosition || "bottom-right"} />
+            {/* ── Installation ──────────────────────────────────── */}
+            <SectionCard id="install" icon={Code2} title="Installation" description="Add the chat widget to your website with one line of code.">
+              <EmbedSnippet slug={org.slug} />
+            </SectionCard>
 
             {/* ── Widget Appearance ─────────────────────────────── */}
             <SectionCard id="widget-appearance" icon={Palette} title="Widget Appearance" description="Branding, colors, position, and language of your chat widget.">
