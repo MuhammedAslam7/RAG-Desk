@@ -395,7 +395,7 @@ type FormValue = string | number | boolean | null | undefined;
 // Main component
 // ─────────────────────────────────────────────────────────────
 export default function OrgSettingsManager() {
-  const { org, loading, update } = useOrgSettings();
+  const { org, loading, update, refresh } = useOrgSettings();
   const [form, setForm] = useState<Partial<OrganizationSettings>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -768,7 +768,7 @@ export default function OrgSettingsManager() {
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-8 pb-32">
             {/* ── Installation ──────────────────────────────────── */}
             <SectionCard id="install" icon={Code2} title="Installation" description="Add the chat widget to your website with one line of code.">
-              <EmbedSnippet slug={org.slug} />
+              <EmbedSnippet token={org.widgetToken} onRotate={() => refresh()} />
             </SectionCard>
 
             {/* ── Widget Appearance ─────────────────────────────── */}
@@ -1424,7 +1424,7 @@ export default function OrgSettingsManager() {
                 <iframe
                   key={iframeKey}
                   ref={iframeRef}
-                  src={`/widget/${org.slug}?preview=1`}
+                  src={`/widget/${org.widgetToken}?preview=1`}
                   onLoad={handleIframeLoad}
                   title="Widget preview"
                   className="border-0"
@@ -1486,7 +1486,7 @@ export default function OrgSettingsManager() {
               <iframe
                 key={iframeKey}
                 ref={iframeRef}
-                src={`/widget/${org.slug}?preview=1`}
+                src={`/widget/${org.widgetToken}?preview=1`}
                 onLoad={handleIframeLoad}
                 title="Widget preview"
                 className="border-0"

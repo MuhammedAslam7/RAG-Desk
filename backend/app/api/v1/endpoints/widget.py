@@ -26,7 +26,7 @@ FALLBACK_MESSAGE = (
 
 
 class WidgetChatRequest(BaseModel):
-    org: str
+    token: str
     message: str
     visitorId: str
     chatId: str | None = None
@@ -36,7 +36,7 @@ class WidgetChatRequest(BaseModel):
 
 
 class EscalateRequest(BaseModel):
-    org: str
+    token: str
     chatId: str
     visitorId: str
 
@@ -58,10 +58,23 @@ def _origin_allowed(request: Request, allowed: list[str]) -> bool:
     return False
 
 
-async def _get_org_and_settings(db: AsyncSession, slug: str):
+async def _get_org_and_settings(db: AsyncSession, token: str):
+    """Resolve an org from its public widget token.
+
+    Falls back to the legacy slug lookup so embed snippets created before
+    tokens existed keep working — new embeds only ever expose the token.
+    """
     org = (
-        await db.execute(select(Organization).where(Organization.slug == slug))
+        await db.execute(select(Organization).where(Organization.widgetToken == token))
     ).scalars().first()
+    if org is None:
+        # Legacy path: snippets pasted before tokens existed used the slug.
+        # Log it so the deprecated lookup can be removed once those are gone.
+        org = (
+            await db.execute(select(Organization).where(Organization.slug == token))
+        ).scalars().first()
+        if org is not None:
+            print("Widget resolved org by legacy slug lookup:", org.id)
     if org is None:
         raise HTTPException(status_code=404, detail="Unknown organization")
     settings = (
@@ -78,7 +91,7 @@ async def widget_chat(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    org, settings = await _get_org_and_settings(db, body.org)
+    org, settings = await _get_org_and_settings(db, body.token)
 
     if org.status != "active":
         raise HTTPException(status_code=403, detail="This assistant is currently unavailable")
@@ -199,14 +212,14 @@ async def widget_chat(
 
 @router.get("/history")
 async def widget_history(
-    org: str,
+    token: str,
     visitorId: str,
     db: AsyncSession = Depends(get_db),
 ):
     """Return prior messages for a returning visitor, only if the org has
     both 'remember conversations' and 'save visitor history' enabled — if
     either is off there is nothing to (or should) restore."""
-    org_obj, settings = await _get_org_and_settings(db, org)
+    org_obj, settings = await _get_org_and_settings(db, token)
 
     if not settings or not settings.rememberConversations or not settings.saveVisitorHistory:
         return {"chatId": None, "messages": []}
@@ -235,8 +248,8 @@ async def widget_history(
 
 
 @router.get("/config", response_model=WidgetConfigOut)
-async def widget_config(org: str, db: AsyncSession = Depends(get_db)):
-    organization, settings = await _get_org_and_settings(db, org)
+async def widget_config(token: str, db: AsyncSession = Depends(get_db)):
+    organization, settings = await _get_org_and_settings(db, token)
 
     def g(attr, default=None):
         return getattr(settings, attr) if settings else default
@@ -307,7 +320,7 @@ async def widget_escalate(
     db: AsyncSession = Depends(get_db),
 ):
     """Visitor requests escalation to a human agent."""
-    org, settings = await _get_org_and_settings(db, body.org)
+    org, settings = await _get_org_and_settings(db, body.token)
 
     if org.status != "active":
         raise HTTPException(status_code=403, detail="This assistant is currently unavailable")

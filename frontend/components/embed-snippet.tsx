@@ -3,23 +3,56 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Eye, EyeOff } from "lucide-react";
+import { Copy, Check, Eye, EyeOff, RotateCcw, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api-client";
 
 const REVEAL_SECONDS = 3;
 
-export default function EmbedSnippet({ slug }: { slug: string }) {
+export default function EmbedSnippet({
+  token,
+  onRotate,
+}: {
+  token: string;
+  onRotate: (newToken: string) => void;
+}) {
   const [copied, setCopied] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(REVEAL_SECONDS);
+  const [rotating, setRotating] = useState(false);
 
   const widgetOrigin = process.env.NEXT_PUBLIC_WIDGET_URL || window.location.origin;
 
+  // The embed exposes the org's opaque *widget token* — never the slug. This
+  // matches how Intercom (app_id), Crisp (website_id) and Chatwoot
+  // (websiteToken) identify embeds publicly.
   const snippet = `<script
   src="${widgetOrigin}/widget.js"
-  data-org="${slug}"
+  data-token="${token}"
   data-url="${widgetOrigin}"
   async
 ></script>`;
+
+  const rotate = async () => {
+    if (
+      !window.confirm(
+        "Regenerating your widget token immediately breaks every existing embed. " +
+          "You'll need to re-paste the new snippet. Continue?"
+      )
+    )
+      return;
+    setRotating(true);
+    try {
+      const res = await apiFetch("/api/v1/settings/rotate-widget-token", {
+        method: "POST",
+      });
+      const data = await res.json();
+      onRotate(data.widgetToken);
+      setCopied(false);
+      setRevealed(true);
+    } finally {
+      setRotating(false);
+    }
+  };
 
   // Auto-hide the snippet a few seconds after it's revealed
   useEffect(() => {
@@ -64,16 +97,33 @@ export default function EmbedSnippet({ slug }: { slug: string }) {
           your website to activate the widget. That&apos;s it — everything else is
           configured here in Settings.
         </p>
-        <Button
-          size="sm"
-          variant={revealed ? "secondary" : "outline"}
-          onClick={toggleReveal}
-          className="gap-1.5 flex-shrink-0"
-          aria-expanded={revealed}
-        >
-          {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          {revealed ? "Hide code" : "Show code"}
-        </Button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={rotate}
+            disabled={rotating}
+            className="gap-1.5"
+            title="Regenerate the widget token. Existing embeds stop working immediately."
+          >
+            {rotating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RotateCcw className="h-3.5 w-3.5" />
+            )}
+            Regenerate
+          </Button>
+          <Button
+            size="sm"
+            variant={revealed ? "secondary" : "outline"}
+            onClick={toggleReveal}
+            className="gap-1.5"
+            aria-expanded={revealed}
+          >
+            {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {revealed ? "Hide code" : "Show code"}
+          </Button>
+        </div>
       </div>
 
       {revealed && (

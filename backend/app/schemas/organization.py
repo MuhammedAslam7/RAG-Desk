@@ -134,6 +134,7 @@ class OrganizationOut(BaseModel):
     id: str
     name: str
     slug: str
+    widgetToken: str
     status: str
     logoUrl: str | None
     brandName: str | None

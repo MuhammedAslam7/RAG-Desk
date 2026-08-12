@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, use, useRef, useMemo, useCallback } from "react";
-import { X, Send, UserRound, MessageCircle } from "lucide-react";
+import { X, Send, UserRound } from "lucide-react";
 import { ChatbotIcon } from "@/components/chatbot-icon";
 import { WidgetConfig } from "@/types";
 import { PREVIEW_CONFIG_MESSAGE } from "@/lib/widget-preview";
@@ -109,15 +109,17 @@ function mergeServerMessages(
   return next;
 }
 
-export default function WidgetPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params);
+export default function WidgetPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params);
   const [config, setConfig] = useState<WidgetConfig | null>(null);
   const [messages, setMessages] = useState<WidgetMessage[]>([]);
   const [input, setInput] = useState("");
   const [visitorId, setVisitorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [prefersDark, setPrefersDark] = useState(true);
+  const [prefersDark, setPrefersDark] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
   const [showWelcome, setShowWelcome] = useState(true);
   const [contact, setContact] = useState<{ name: string; email: string; phone: string }>({
     name: "", email: "", phone: "",
@@ -132,7 +134,6 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
   const inputRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatIdRef = useRef<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const escalatedRef = useRef(false);
@@ -159,7 +160,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
 
   useEffect(() => {
     const preview = isPreview.current;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/config?org=${slug}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/config?token=${token}`)
       .then((r) => r.json())
       .then((cfg: WidgetConfig) => {
         // If a preview override arrived before the fetch finished, apply it.
@@ -170,7 +171,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         setIsOpen(preview ? true : !merged.startMinimized);
       })
       .catch(() => setConfig(null));
-  }, [slug]);
+  }, [token]);
 
   // ── Preview-mode listener: accept config overrides from the settings page ─
   useEffect(() => {
@@ -202,7 +203,6 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
 
   useEffect(() => {
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    setPrefersDark(mql.matches);
     const onChange = (e: MediaQueryListEvent) => setPrefersDark(e.matches);
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
@@ -236,7 +236,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     setVisitorId(id);
 
     try {
-      const saved = localStorage.getItem(CONTACT_KEY_PREFIX + slug);
+      const saved = localStorage.getItem(CONTACT_KEY_PREFIX + token);
       if (saved) {
         const parsed = JSON.parse(saved);
         setContact(parsed);
@@ -247,7 +247,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     }
 
     // Restore prior conversation and check escalation status in one call
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/history?org=${slug}&visitorId=${id}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/history?token=${token}&visitorId=${id}`)
       .then((r) => r.json())
       .then((data: { chatId: string | null; messages: { id: string; sender: string; content: string }[] }) => {
         if (data.chatId) {
@@ -272,14 +272,14 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
       .catch(() => {
         /* no history available — start fresh, not fatal */
       });
-  }, [slug]);
+  }, [token]);
 
   // ---- Poll for new agent messages when escalated ----
   useEffect(() => {
     if (!escalated || !visitorId || !chatIdRef.current) return;
     const poll = () => {
       fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/history?org=${slug}&visitorId=${visitorId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/history?token=${token}&visitorId=${visitorId}`
       )
         .then((r) => r.json())
         .then((data: { messages: ServerMessage[] }) => {
@@ -293,7 +293,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [escalated, visitorId, slug]);
+  }, [escalated, visitorId, token]);
 
   const handleEscalate = async () => {
     if (!chatIdRef.current || escalating) return;
@@ -305,7 +305,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            org: slug,
+            token,
             chatId: chatIdRef.current,
             visitorId,
           }),
@@ -427,7 +427,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
     setContactError(null);
     setContactSubmitted(true);
     try {
-      localStorage.setItem(CONTACT_KEY_PREFIX + slug, JSON.stringify(contact));
+      localStorage.setItem(CONTACT_KEY_PREFIX + token, JSON.stringify(contact));
     } catch {
       /* ignore */
     }
@@ -459,7 +459,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          org: slug,
+          token,
           message: text,
           visitorId,
           chatId: chatIdRef.current || undefined,
@@ -815,7 +815,7 @@ export default function WidgetPage({ params }: { params: Promise<{ slug: string 
             data-1p-ignore="true"
             name="widget-message"
             className="border border-border bg-input/40 text-foreground placeholder:text-muted-foreground rounded-full px-4 py-2 flex-1 outline-none text-sm focus-visible:ring-2"
-            style={{ ["--tw-ring-color" as any]: accent }}
+            style={{ "--tw-ring-color": accent } as React.CSSProperties}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

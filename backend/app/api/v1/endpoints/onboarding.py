@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import Organization, OrganizationSettings, User
+from app.models.organization import generate_widget_token
 from app.schemas.team import SyncProfileRequest
 from app.repositories import user_repo
 
@@ -100,6 +101,7 @@ async def onboard(
     org = Organization(
         name=body.org_name.strip(),
         slug=slug,
+        widgetToken=generate_widget_token(),
         logoUrl=body.logo_url,
         brandName=body.brand_name or body.org_name.strip(),
         websiteUrl=body.website_url,

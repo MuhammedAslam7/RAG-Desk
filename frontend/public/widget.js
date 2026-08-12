@@ -1,10 +1,12 @@
 // frontend/public/widget.js
 (function () {
   const script = document.currentScript;
-  const org = script.getAttribute("data-org");
+  // Public embeds use the org's opaque widget token (data-token). The
+  // data-org fallback keeps snippets generated before tokens existed working.
+  const token = script.getAttribute("data-token") || script.getAttribute("data-org");
   const base = script.getAttribute("data-url") || "http://localhost:3000";
   const fallbackPosition = script.getAttribute("data-position") || "bottom-right";
-  const sessionKey = `rag_desk_widget_open_${org}`;
+  const sessionKey = `rag_desk_widget_open_${token}`;
 
   let dims = { width: 380, height: 600, radius: 16 };
   let keepOpenAcrossPages = false;
@@ -14,7 +16,7 @@
   const MARGIN_MOBILE = 12;
 
   const iframe = document.createElement("iframe");
-  iframe.src = `${base}/widget/${org}`;
+  iframe.src = `${base}/widget/${token}`;
   iframe.title = "Support chat";
   iframe.style.cssText =
     "position:fixed;border:none;z-index:99999;background:transparent;" +

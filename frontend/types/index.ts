@@ -134,6 +134,7 @@ export interface OrganizationDetails {
   id: string;
   name: string;
   slug: string;
+  widgetToken: string;
   status: string;
   logoUrl?: string | null;
   brandName?: string | null;
