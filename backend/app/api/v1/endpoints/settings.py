@@ -35,7 +35,9 @@ async def get_org(
     settings = await _get_settings(db, user.organizationId)
     return OrganizationOut(
     id=org.id, name=org.name, slug=org.slug, status=org.status,
-    logoUrl=org.logoUrl, websiteUrl=org.websiteUrl, industry=org.industry,
+    logoUrl=org.logoUrl, brandName=org.brandName, websiteUrl=org.websiteUrl,
+    industry=org.industry, teamSize=org.teamSize,
+    primaryUseCase=org.primaryUseCase, supportChannels=org.supportChannels,
     contactEmail=org.contactEmail, phone=org.phone, country=org.country,
     timezone=org.timezone, language=org.language,
     createdAt=org.createdAt, settings=settings,

@@ -136,8 +136,12 @@ class OrganizationOut(BaseModel):
     slug: str
     status: str
     logoUrl: str | None
+    brandName: str | None
     websiteUrl: str | None
     industry: str | None
+    teamSize: str | None
+    primaryUseCase: str | None
+    supportChannels: str | None
     contactEmail: str | None
     phone: str | None
     country: str | None

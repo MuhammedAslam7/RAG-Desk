@@ -135,6 +135,18 @@ export interface OrganizationDetails {
   name: string;
   slug: string;
   status: string;
+  logoUrl?: string | null;
+  brandName?: string | null;
+  websiteUrl?: string | null;
+  industry?: string | null;
+  teamSize?: string | null;
+  primaryUseCase?: string | null;
+  supportChannels?: string | null;
+  contactEmail?: string | null;
+  phone?: string | null;
+  country?: string | null;
+  timezone?: string | null;
+  language?: string;
   createdAt: string;
   settings: OrganizationSettings;
 }

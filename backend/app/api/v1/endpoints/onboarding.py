@@ -22,8 +22,12 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 class OnboardRequest(BaseModel):
     org_name: str
     logo_url: str | None = None
+    brand_name: str | None = None
     website_url: str | None = None
     industry: str | None = None
+    team_size: str | None = None
+    primary_use_case: str | None = None
+    support_channels: list[str] = []
     contact_email: str
     phone: str | None = None
     country: str
@@ -76,18 +80,33 @@ async def onboard(
         raise HTTPException(409, "You already belong to an organization")
     if not body.org_name.strip():
         raise HTTPException(400, "Organization name is required")
+    if not body.website_url or not body.website_url.strip():
+        raise HTTPException(400, "Website URL is required")
+    if not body.industry or not body.industry.strip():
+        raise HTTPException(400, "Industry is required")
+    if not body.team_size or not body.team_size.strip():
+        raise HTTPException(400, "Team size is required")
+    if not body.primary_use_case or not body.primary_use_case.strip():
+        raise HTTPException(400, "Primary use case is required")
+    if not body.support_channels:
+        raise HTTPException(400, "At least one support channel is required")
     if not body.contact_email.strip():
         raise HTTPException(400, "Primary contact email is required")
     if not body.country.strip():
         raise HTTPException(400, "Country/Region is required")
 
     slug = await unique_slug(db, slugify(body.org_name))
+    channels = ",".join(body.support_channels) if body.support_channels else None
     org = Organization(
         name=body.org_name.strip(),
         slug=slug,
         logoUrl=body.logo_url,
+        brandName=body.brand_name or body.org_name.strip(),
         websiteUrl=body.website_url,
         industry=body.industry,
+        teamSize=body.team_size,
+        primaryUseCase=body.primary_use_case,
+        supportChannels=channels,
         contactEmail=body.contact_email.strip(),
         phone=body.phone,
         country=body.country,

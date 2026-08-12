@@ -30,6 +30,12 @@ class Organization(Base):
     timezone: Mapped[str | None] = mapped_column(String, nullable=True)
     language: Mapped[str] = mapped_column(String, default="en")
 
+    # --- Added during onboarding wizard (benchmarked against Intercom / Crisp / Tidio) ---
+    brandName: Mapped[str | None] = mapped_column(String, nullable=True)  # customer-facing name
+    teamSize: Mapped[str | None] = mapped_column(String, nullable=True)  # 1-10 | 11-50 | 51-200 | 200+
+    primaryUseCase: Mapped[str | None] = mapped_column(String, nullable=True)  # support | sales | faq | ecommerce | internal
+    supportChannels: Mapped[str | None] = mapped_column(Text, nullable=True)  # comma-separated: widget,email,whatsapp,...
+
     createdAt: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updatedAt: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
