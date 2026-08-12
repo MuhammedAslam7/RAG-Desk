@@ -18,7 +18,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useKnowledge } from "@/hooks/use-knowledge";
-import { PageHeader } from "@/components/page-header";
 
 type Method = "upload" | "paste" | "faq" | "faqcsv" | "crawl";
 
@@ -87,10 +86,6 @@ export default function KnowledgeManager() {
       {/* Content */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
-          <PageHeader
-            title="Knowledge Base"
-            description="Teach your AI from files, pasted text, FAQs, or your website."
-          />
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Method Tabs */}
             <div className="lg:col-span-1">

@@ -8,7 +8,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, Sparkles } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
-import { PageHeader } from "@/components/page-header";
 
 const SUGGESTIONS = [
   "What can you help me with?",
@@ -70,16 +69,6 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-full w-full bg-background">
-      {/* Chat Header */}
-      <div className="flex-shrink-0 px-6 pt-6">
-        <div className="max-w-4xl mx-auto">
-          <PageHeader
-            title="Chat"
-            description="Test your AI assistant against your knowledge base and verified facts."
-          />
-        </div>
-      </div>
-
       {/* Messages Area */}
       <ScrollArea className="flex-1 min-h-0 px-6 py-6">
         <div className="max-w-4xl mx-auto space-y-4 pb-4">

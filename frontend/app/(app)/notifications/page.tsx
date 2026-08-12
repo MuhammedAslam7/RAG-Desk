@@ -2,17 +2,12 @@ import { Bell, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/page-header";
 
 export default function NotificationsPage() {
   return (
     <div className="h-full w-full bg-background flex flex-col">
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-8 py-8">
-          <PageHeader
-            title="Notifications"
-            description="Stay on top of new conversations, failed crawls, and teammate activity."
-          />
           <Card className="border-border bg-card/50 p-12 text-center">
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
               <Bell className="h-8 w-8 text-primary" />

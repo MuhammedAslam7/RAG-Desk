@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useEscalation } from "@/hooks/use-escalation";
 import { EscalatedChatDetail } from "@/types";
-import { PageHeader } from "@/components/page-header";
+import { AppLoader } from "@/components/app-loader";
 
 export default function EscalationManager() {
   const {
@@ -147,14 +147,8 @@ export default function EscalationManager() {
     <div className="h-full w-full bg-background flex flex-col">
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
-          <PageHeader
-            title="Live Conversations"
-            description="Requests from visitors who asked to talk to a real human."
-          />
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <AppLoader label="Loading conversations…" className="min-h-[320px]" />
           ) : chats.length === 0 ? (
             <Card className="border-border bg-card/50 p-12 text-center">
               <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">

@@ -31,16 +31,14 @@ import {
   Globe,
   HelpCircle,
   Search,
-  Loader2,
   Copy,
   Check,
   Sparkles,
   ExternalLink,
-  RefreshCw,
   type LucideIcon,
 } from "lucide-react";
 import { useDashboard } from "@/hooks/use-dashboard";
-import { PageHeader } from "@/components/page-header";
+import { AppLoader } from "@/components/app-loader";
 
 const PIE_COLORS: Record<string, string> = {
   pdf: "var(--chart-1)",
@@ -103,7 +101,7 @@ function ComingSoonCard({ title, hint }: { title: string; hint: string }) {
 }
 
 export default function Overview() {
-  const { data, loading, refresh } = useDashboard();
+  const { data, loading } = useDashboard();
   const [search, setSearch] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -141,11 +139,7 @@ export default function Overview() {
   };
 
   if (loading || !data) {
-    return (
-      <div className="h-full flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AppLoader label="Loading your dashboard…" />;
   }
 
   const onboardingSteps = [
@@ -164,21 +158,6 @@ export default function Overview() {
     <div className="h-full w-full bg-background flex flex-col">
       <div className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto px-8 py-8 space-y-8">
-          <PageHeader
-            title="Overview"
-            description="Monitor your AI assistant's performance and activity at a glance."
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 text-muted-foreground hover:text-foreground"
-              onClick={() => refresh()}
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Refresh
-            </Button>
-          </PageHeader>
-
           {/* Onboarding empty state */}
           {isNewOrg && (
             <Card className="border-primary/30 bg-primary/5 p-6">

@@ -16,7 +16,6 @@ import {
 import { Plus, Edit2, Trash2, AlertCircle, Loader2 } from "lucide-react";
 import { useFacts } from "@/hooks/use-facts";
 import { Fact } from "@/types";
-import { PageHeader } from "@/components/page-header";
 
 export default function FactsManager() {
   const { facts, create, update, remove } = useFacts();
@@ -63,10 +62,7 @@ export default function FactsManager() {
       {/* Content */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
-          <PageHeader
-            title="Verified Facts"
-            description="Facts your AI should always treat as accurate."
-          >
+          <div className="flex justify-end mb-4">
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -134,7 +130,7 @@ export default function FactsManager() {
               </div>
               </DialogContent>
             </Dialog>
-          </PageHeader>
+          </div>
 
           {facts.length === 0 ? (
             <Card className="border-border bg-card/50 p-12 text-center">

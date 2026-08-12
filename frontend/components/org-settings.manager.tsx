@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useOrgSettings } from "@/hooks/use-org-settings";
 import { OrganizationSettings } from "@/types";
+import { AppLoader } from "@/components/app-loader";
 import EmbedSnippet from "./embed-snippet";
 import { PREVIEW_CONFIG_MESSAGE, mapSettingsToWidgetConfig } from "@/lib/widget-preview";
 
@@ -517,11 +518,7 @@ export default function OrgSettingsManager() {
   };
 
   if (loading || !org) {
-    return (
-      <div className="h-full flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AppLoader label="Loading workspace settings…" />;
   }
 
   return (
@@ -534,8 +531,8 @@ export default function OrgSettingsManager() {
             <Settings2 className="h-3.5 w-3.5 text-primary" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-[15px] font-semibold text-foreground tracking-tight leading-tight">Settings</h2>
-            <p className="text-[11px] text-muted-foreground truncate">{org.name}</p>
+            <h2 className="text-[15px] font-semibold text-foreground tracking-tight leading-tight truncate">{org.name}</h2>
+            <p className="text-[11px] text-muted-foreground truncate">Workspace settings</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">

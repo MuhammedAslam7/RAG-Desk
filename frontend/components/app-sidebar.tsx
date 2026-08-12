@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -16,8 +15,6 @@ import {
   Bell,
   CreditCard,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   Sparkles,
 } from "lucide-react";
 import { useSidebar } from "@/lib/sidebar-context";
@@ -62,9 +59,9 @@ const NAV_GROUPS: {
   },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { isOpen, toggle } = useSidebar();
+  const { isOpen } = useSidebar();
   const { user } = useUser();
 
   const displayName =
@@ -91,34 +88,20 @@ export function AppSidebar() {
       >
         {/* Brand */}
         <div className="px-4 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-card flex-shrink-0">
-                <Sparkles className="h-4 w-4 text-primary-foreground" />
-              </div>
-              {isOpen && (
-                <div className="min-w-0">
-                  <h1 className="text-[15px] font-semibold tracking-tight text-foreground truncate leading-tight">
-                    RAG Desk
-                  </h1>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    AI Support
-                  </p>
-                </div>
-              )}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-card flex-shrink-0">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggle}
-              className="hidden md:inline-flex text-muted-foreground hover:text-foreground hover:bg-sidebar-accent flex-shrink-0"
-            >
-              {isOpen ? (
-                <ChevronLeft className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </Button>
+            {isOpen && (
+              <div className="min-w-0">
+                <h1 className="text-[15px] font-semibold tracking-tight text-foreground truncate leading-tight">
+                  RAG Desk
+                </h1>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  AI Support
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -141,6 +124,7 @@ export function AppSidebar() {
                       <Link
                         key={item.href}
                         href={item.href}
+                        onClick={onNavigate}
                         className={`relative flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm transition-all ${
                           isOpen ? "" : "justify-center"
                         } ${

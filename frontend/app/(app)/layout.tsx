@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { AppSidebar } from "@/components/app-sidebar";
-import { MobileHeader } from "@/components/mobile-header";
+import { AppHeader } from "@/components/app-header";
 import { SidebarProvider } from "@/lib/sidebar-context";
 import { ProfileSync } from "@/components/profile-sync";
 
@@ -24,7 +24,6 @@ async function hasOrg(token: string | null): Promise<boolean> {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { userId, getToken } = await auth();
-  console.log("userId", userId)
 
   if (!userId) redirect("/sign-in");
 
@@ -34,12 +33,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <SidebarProvider>
       <ProfileSync />
-      <MobileHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <div className="hidden md:flex">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="hidden md:flex flex-shrink-0">
           <AppSidebar />
         </div>
-        <main className="flex-1 overflow-hidden w-full">{children}</main>
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
+          <AppHeader />
+          <main className="flex-1 overflow-hidden min-h-0">{children}</main>
+        </div>
       </div>
     </SidebarProvider>
   );

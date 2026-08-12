@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, MessageCircle, Search, X, UserRound } from "lucide-react";
 import { useConversations, WidgetSessionDetail } from "@/hooks/use-conversations";
-import { PageHeader } from "@/components/page-header";
+import { AppLoader } from "@/components/app-loader";
 
 function timeAgo(iso: string) {
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
@@ -48,14 +48,8 @@ export default function AllConversations() {
     <div className="h-full w-full bg-background flex flex-col">
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
-          <PageHeader
-            title="All Conversations"
-            description="Full history of every conversation from your website widget."
-          />
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <AppLoader label="Loading conversations…" className="min-h-[320px]" />
           ) : filtered.length === 0 ? (
             <Card className="border-border bg-card/50 p-12 text-center">
               <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
