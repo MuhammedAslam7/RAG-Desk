@@ -528,10 +528,15 @@ export default function OrgSettingsManager() {
     <div className="h-full w-full bg-background flex flex-col relative">
       <h1 className="sr-only">Workspace Settings</h1>
       {/* ── Header ───────────────────────────────────────────── */}
-      <div className="border-b border-border px-6 h-14 flex items-center justify-between gap-4 flex-shrink-0 bg-card/50">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-foreground tracking-tight">Settings</h2>
-          <p className="text-xs text-muted-foreground truncate">{org.name} · {org.slug}</p>
+      <div className="border-b border-border px-6 h-14 flex items-center justify-between gap-4 flex-shrink-0 bg-card/40 backdrop-blur-sm">
+        <div className="min-w-0 flex items-center gap-2.5">
+          <div className="hidden sm:flex h-7 w-7 rounded-lg bg-primary/10 items-center justify-center flex-shrink-0">
+            <Settings2 className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-semibold text-foreground tracking-tight leading-tight">Settings</h2>
+            <p className="text-[11px] text-muted-foreground truncate">{org.name}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* ── Mobile hamburger toggle ── */}

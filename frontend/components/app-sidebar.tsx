@@ -2,63 +2,107 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { useUser, UserButton } from "@clerk/nextjs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   MessageSquare,
+  Inbox,
+  History,
   BookOpen,
   Lightbulb,
+  Users,
+  Bell,
+  CreditCard,
   Settings,
   ChevronLeft,
   ChevronRight,
-  Users,
-  Users2,
-  Bell,
-  CreditCard,
-  History 
+  Sparkles,
 } from "lucide-react";
 import { useSidebar } from "@/lib/sidebar-context";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-const menuItems = [
-  { label: "Overview", icon: LayoutDashboard, href: "/overview" },
-  { label: "Chat", icon: MessageSquare, href: "/chat" },
-  { label: "Live Conversations", icon: Users, href: "/conversations" },
-  { label: "Knowledge", icon: BookOpen, href: "/knowledge" },
-  { label: "Facts", icon: Lightbulb, href: "/facts" },
-  { label: "Team", icon: Users2, href: "/team" },
-  { label: "Notifications", icon: Bell, href: "/notifications" },
-  { label: "Billing", icon: CreditCard, href: "/billing" },
-  { label: "Settings", icon: Settings, href: "/settings" },
-   { label: "All Conversations", icon: History, href: "/conversations/history" }
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+const NAV_GROUPS: {
+  label: string;
+  items: { label: string; icon: React.ElementType; href: string }[];
+}[] = [
+  {
+    label: "Overview",
+    items: [{ label: "Overview", icon: LayoutDashboard, href: "/overview" }],
+  },
+  {
+    label: "Support",
+    items: [
+      { label: "Chat", icon: MessageSquare, href: "/chat" },
+      { label: "Live Conversations", icon: Inbox, href: "/conversations" },
+      { label: "All Conversations", icon: History, href: "/conversations/history" },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { label: "Knowledge", icon: BookOpen, href: "/knowledge" },
+      { label: "Facts", icon: Lightbulb, href: "/facts" },
+    ],
+  },
+  {
+    label: "Workspace",
+    items: [
+      { label: "Team", icon: Users, href: "/team" },
+      { label: "Notifications", icon: Bell, href: "/notifications" },
+      { label: "Billing", icon: CreditCard, href: "/billing" },
+      { label: "Settings", icon: Settings, href: "/settings" },
+    ],
+  },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { isOpen, toggle } = useSidebar();
+  const { user } = useUser();
+
+  const displayName =
+    user?.fullName || user?.firstName || user?.username || "Account";
+  const email = user?.primaryEmailAddress?.emailAddress ?? "";
+  const initials =
+    displayName
+      .split(" ")
+      .filter(Boolean)
+      .map((p) => p[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "U";
+
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delay={0}>
       <aside
-        className={`border-r border-border bg-card flex flex-col h-screen transition-all duration-300 ${
-          isOpen ? "w-60" : "w-20"
+        className={`border-r border-border bg-sidebar flex flex-col h-screen transition-all duration-300 ${
+          isOpen ? "w-60" : "w-[68px]"
         }`}
       >
-        {/* Header */}
+        {/* Brand */}
         <div className="px-4 py-4 flex-shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/60 flex-shrink-0">
-                <span className="text-sm font-bold text-white">RD</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-card flex-shrink-0">
+                <Sparkles className="h-4 w-4 text-primary-foreground" />
               </div>
               {isOpen && (
                 <div className="min-w-0">
-                  <h1 className="text-lg font-bold text-foreground truncate">
+                  <h1 className="text-[15px] font-semibold tracking-tight text-foreground truncate leading-tight">
                     RAG Desk
                   </h1>
-                  <p className="text-xs text-muted-foreground truncate">
-                    AI Assistant
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    AI Support
                   </p>
                 </div>
               )}
@@ -67,7 +111,7 @@ export function AppSidebar() {
               variant="ghost"
               size="icon"
               onClick={toggle}
-              className="text-foreground hover:bg-secondary flex-shrink-0"
+              className="hidden md:inline-flex text-muted-foreground hover:text-foreground hover:bg-sidebar-accent flex-shrink-0"
             >
               {isOpen ? (
                 <ChevronLeft className="h-4 w-4" />
@@ -78,70 +122,85 @@ export function AppSidebar() {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-2 py-4">
-          {isOpen && (
-            <div className="mb-6">
-              <p className="px-3 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                Workspace
-              </p>
-            </div>
-          )}
+        {/* Nav */}
+        <div className="flex-1 overflow-y-auto px-3 py-4">
+          <nav className="space-y-6">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label}>
+                {isOpen && (
+                  <p className="px-2 mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                    {group.label}
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
 
-          <nav className="space-y-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-             const isActive =
-  pathname === item.href || pathname.startsWith(item.href + "/");
-              const navItem = (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
-                    isActive
-                      ? "bg-primary text-primary-foreground font-semibold"
-                      : "text-foreground hover:bg-secondary"
-                  } ${isOpen ? "" : "justify-center"}`}
-                >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
-                  {isOpen && <span className="text-sm truncate">{item.label}</span>}
-                </Link>
-              );
+                    const link = (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`relative flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm transition-all ${
+                          isOpen ? "" : "justify-center"
+                        } ${
+                          active
+                            ? "bg-sidebar-accent text-foreground font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+                        }`}
+                      >
+                        {active && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-primary" />
+                        )}
+                        <Icon
+                          className={`h-[18px] w-[18px] flex-shrink-0 ${
+                            active ? "text-primary" : ""
+                          }`}
+                        />
+                        {isOpen && (
+                          <span className="truncate">{item.label}</span>
+                        )}
+                      </Link>
+                    );
 
-              if (!isOpen) {
-                return (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>{navItem}</TooltipTrigger>
-                    <TooltipContent side="right">{item.label}</TooltipContent>
-                  </Tooltip>
-                );
-              }
-
-              return navItem;
-            })}
+                    if (!isOpen) {
+                      return (
+                        <Tooltip key={item.href}>
+                          <TooltipTrigger>{link}</TooltipTrigger>
+                          <TooltipContent side="right">
+                            {item.label}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+                    return link;
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-4 flex-shrink-0">
+        {/* User footer */}
+        <div className="px-3 py-3 flex-shrink-0 border-t border-border/70">
           {isOpen ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
-                    U
+                  <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate">
-                    User
+                  <p className="text-[13px] font-medium text-foreground truncate">
+                    {displayName}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    user@example.com
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {email || "Signed in"}
                   </p>
                 </div>
               </div>
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 [&_button]:!bg-transparent [&_button]:!shadow-none [&_svg]:!w-4 [&_svg]:!h-4">
                 <UserButton />
               </div>
             </div>

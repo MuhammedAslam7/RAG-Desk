@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useEscalation } from "@/hooks/use-escalation";
 import { EscalatedChatDetail } from "@/types";
+import { PageHeader } from "@/components/page-header";
 
 export default function EscalationManager() {
   const {
@@ -32,10 +33,8 @@ export default function EscalationManager() {
   } = useEscalation();
 
   const [detail, setDetail] = useState<EscalatedChatDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
-  const [claimedId, setClaimedId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-poll every 5 seconds
@@ -50,22 +49,18 @@ export default function EscalationManager() {
   }, [detail?.messages.length]);
 
   const openChat = async (chatId: string) => {
-    setDetailLoading(true);
     try {
-      const d = await getDetail(chatId);
-      setDetail(d);
-    } finally {
-      setDetailLoading(false);
+      setDetail(await getDetail(chatId));
+    } catch (err) {
+      console.error("Failed to load conversation:", err);
     }
   };
 
   const handleClaim = async (chatId: string) => {
     try {
       await claim(chatId);
-      setClaimedId(chatId);
       // Refresh detail to show updated status
-      const d = await getDetail(chatId);
-      setDetail(d);
+      setDetail(await getDetail(chatId));
     } catch (err) {
       console.error("Claim failed:", err);
     }
@@ -75,11 +70,10 @@ export default function EscalationManager() {
     if (!replyText.trim() || !detail || sending) return;
     setSending(true);
     try {
-      const result = await sendAgentReply(detail.chatId, replyText);
+      await sendAgentReply(detail.chatId, replyText);
       setReplyText("");
       // Refresh the detail to show the new message
-      const d = await getDetail(detail.chatId);
-      setDetail(d);
+      setDetail(await getDetail(detail.chatId));
     } catch (err) {
       console.error("Send reply failed:", err);
     } finally {
@@ -91,7 +85,6 @@ export default function EscalationManager() {
     try {
       await resolve(chatId);
       setDetail(null);
-      setClaimedId(null);
     } catch (err) {
       console.error("Resolve failed:", err);
     }
@@ -152,21 +145,27 @@ export default function EscalationManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <h1 className="sr-only">Customer Conversations</h1>
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
+          <PageHeader
+            title="Live Conversations"
+            description="Requests from visitors who asked to talk to a real human."
+          />
           {loading ? (
             <div className="flex justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : chats.length === 0 ? (
             <Card className="border-border bg-card/50 p-12 text-center">
-              <Handshake className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Handshake className="h-7 w-7 text-primary" />
+              </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">
                 No live conversations
               </h3>
               <p className="text-muted-foreground">
-                When a visitor requests a human agent, their conversation will appear here.
+                When a visitor requests a human agent, their conversation will
+                appear here and you can jump in right away.
               </p>
             </Card>
           ) : (
@@ -176,13 +175,18 @@ export default function EscalationManager() {
                 <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-amber-500" />
                   Open Requests
+                  <span className="text-xs font-medium rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                    {chats.length}
+                  </span>
                 </h2>
                 {chats.map((c) => (
                   <Card
                     key={c.chatId}
                     onClick={() => openChat(c.chatId)}
-                    className={`border-border bg-card/50 hover:bg-card transition-all p-4 cursor-pointer ${
-                      detail?.chatId === c.chatId ? "ring-2 ring-primary" : ""
+                    className={`border-border bg-card/50 hover:bg-card hover:shadow-card transition-all p-4 cursor-pointer ${
+                      detail?.chatId === c.chatId
+                        ? "ring-2 ring-primary/60 border-primary/30"
+                        : ""
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -353,12 +357,14 @@ export default function EscalationManager() {
                   </Card>
                 ) : (
                   <Card className="border-border bg-card/50 p-12 text-center h-[600px] flex flex-col items-center justify-center">
-                    <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                      <MessageCircle className="h-7 w-7 text-primary" />
+                    </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">
                       Select a conversation
                     </h3>
                     <p className="text-muted-foreground text-sm">
-                      Click on a conversation from the list to view messages and reply.
+                      Click a conversation on the left to view messages and reply.
                     </p>
                   </Card>
                 )}

@@ -16,6 +16,7 @@ import {
 import { Plus, Edit2, Trash2, AlertCircle, Loader2 } from "lucide-react";
 import { useFacts } from "@/hooks/use-facts";
 import { Fact } from "@/types";
+import { PageHeader } from "@/components/page-header";
 
 export default function FactsManager() {
   const { facts, create, update, remove } = useFacts();
@@ -59,12 +60,13 @@ export default function FactsManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <h1 className="sr-only">Verified Facts</h1>
       {/* Content */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
-          {/* Toolbar */}
-          <div className="flex justify-end mb-4">
+          <PageHeader
+            title="Verified Facts"
+            description="Facts your AI should always treat as accurate."
+          >
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -132,11 +134,13 @@ export default function FactsManager() {
               </div>
               </DialogContent>
             </Dialog>
-          </div>
+          </PageHeader>
 
           {facts.length === 0 ? (
             <Card className="border-border bg-card/50 p-12 text-center">
-              <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="h-7 w-7 text-primary" />
+              </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">
                 No facts added yet
               </h3>
@@ -156,7 +160,7 @@ export default function FactsManager() {
               {facts.map((fact) => (
                 <Card
                   key={fact.id}
-                  className="border-border bg-card/50 hover:bg-card transition-all p-5"
+                  className="border-border bg-card/50 hover:bg-card hover:shadow-card transition-all p-5"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">

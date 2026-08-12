@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, MessageCircle, Search, X, UserRound } from "lucide-react";
 import { useConversations, WidgetSessionDetail } from "@/hooks/use-conversations";
+import { PageHeader } from "@/components/page-header";
 
 function timeAgo(iso: string) {
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
@@ -45,21 +46,27 @@ export default function AllConversations() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <h1 className="sr-only">All Conversations</h1>
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
+          <PageHeader
+            title="All Conversations"
+            description="Full history of every conversation from your website widget."
+          />
           {loading ? (
             <div className="flex justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : filtered.length === 0 ? (
             <Card className="border-border bg-card/50 p-12 text-center">
-              <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <MessageCircle className="h-7 w-7 text-primary" />
+              </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">
                 No conversations yet
               </h3>
               <p className="text-muted-foreground">
-                Widget conversations will show up here once visitors start chatting.
+                Widget conversations will show up here once visitors start
+                chatting.
               </p>
             </Card>
           ) : (
@@ -78,8 +85,10 @@ export default function AllConversations() {
                   <Card
                     key={s.chatId}
                     onClick={() => open(s.chatId)}
-                    className={`border-border bg-card/50 hover:bg-card transition-all p-4 cursor-pointer ${
-                      detail?.chatId === s.chatId ? "ring-2 ring-primary" : ""
+                    className={`border-border bg-card/50 hover:bg-card hover:shadow-card transition-all p-4 cursor-pointer ${
+                      detail?.chatId === s.chatId
+                        ? "ring-2 ring-primary/60 border-primary/30"
+                        : ""
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -155,7 +164,9 @@ export default function AllConversations() {
                   </Card>
                 ) : (
                   <Card className="border-border bg-card/50 p-12 text-center h-[600px] flex flex-col items-center justify-center">
-                    <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                      <MessageCircle className="h-7 w-7 text-primary" />
+                    </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">
                       Select a conversation
                     </h3>

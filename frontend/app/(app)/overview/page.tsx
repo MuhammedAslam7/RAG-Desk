@@ -29,7 +29,6 @@ import {
   Lightbulb,
   Plus,
   Globe,
-  FileText,
   HelpCircle,
   Search,
   Loader2,
@@ -37,8 +36,11 @@ import {
   Check,
   Sparkles,
   ExternalLink,
+  RefreshCw,
+  type LucideIcon,
 } from "lucide-react";
 import { useDashboard } from "@/hooks/use-dashboard";
+import { PageHeader } from "@/components/page-header";
 
 const PIE_COLORS: Record<string, string> = {
   pdf: "var(--chart-1)",
@@ -67,19 +69,21 @@ function KpiCard({
   value,
   sub,
 }: {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   value: string | number;
   sub?: string;
 }) {
   return (
-    <Card className="border-border bg-card p-5">
+    <Card className="border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card">
       <div className="flex items-start justify-between mb-3">
         <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
           <Icon className="h-4 w-4 text-primary" />
         </div>
       </div>
-      <p className="text-2xl font-bold text-foreground leading-none mb-1">{value}</p>
+      <p className="text-[26px] font-semibold tracking-tight text-foreground leading-none mb-1.5">
+        {value}
+      </p>
       <p className="text-xs text-muted-foreground">{label}</p>
       {sub && <p className="text-[10px] text-muted-foreground/70 mt-1">{sub}</p>}
     </Card>
@@ -99,7 +103,7 @@ function ComingSoonCard({ title, hint }: { title: string; hint: string }) {
 }
 
 export default function Overview() {
-  const { data, loading } = useDashboard();
+  const { data, loading, refresh } = useDashboard();
   const [search, setSearch] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -158,9 +162,23 @@ export default function Overview() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <h1 className="sr-only">Overview</h1>
       <div className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto px-8 py-8 space-y-8">
+          <PageHeader
+            title="Overview"
+            description="Monitor your AI assistant's performance and activity at a glance."
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={() => refresh()}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </Button>
+          </PageHeader>
+
           {/* Onboarding empty state */}
           {isNewOrg && (
             <Card className="border-primary/30 bg-primary/5 p-6">
@@ -169,6 +187,12 @@ export default function Overview() {
                   Welcome! Let&apos;s get your assistant ready
                 </h2>
                 <span className="text-sm font-semibold text-primary">{readyPct}% ready</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-primary/10 overflow-hidden mb-5">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${readyPct}%` }}
+                />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {onboardingSteps.map((s) => (

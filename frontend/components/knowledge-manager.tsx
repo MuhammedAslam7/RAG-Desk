@@ -13,21 +13,31 @@ import {
   Grid3x3,
   Globe,
   Trash2,
-  Check,
   Loader2,
   Plus,
+  type LucideIcon,
 } from "lucide-react";
 import { useKnowledge } from "@/hooks/use-knowledge";
+import { PageHeader } from "@/components/page-header";
 
 type Method = "upload" | "paste" | "faq" | "faqcsv" | "crawl";
 
-const METHODS: { id: Method; label: string; hint: string; icon: any }[] = [
+const METHODS: { id: Method; label: string; hint: string; icon: LucideIcon }[] = [
   { id: "upload", label: "Upload file", hint: "PDF, DOCX, CSV, TXT", icon: Upload },
   { id: "paste", label: "Paste text", hint: "Plain text content", icon: FileText },
   { id: "faq", label: "Add FAQ", hint: "Q&A pair", icon: HelpCircle },
   { id: "faqcsv", label: "Import CSV", hint: "Bulk import", icon: Grid3x3 },
   { id: "crawl", label: "Crawl website", hint: "Fetch pages", icon: Globe },
 ];
+
+const TYPE_ICONS: Record<string, { icon: LucideIcon; color: string }> = {
+  pdf: { icon: FileText, color: "text-rose-500 bg-rose-500/10" },
+  docx: { icon: FileText, color: "text-sky-500 bg-sky-500/10" },
+  text: { icon: FileText, color: "text-indigo-500 bg-indigo-500/10" },
+  crawl: { icon: Globe, color: "text-emerald-500 bg-emerald-500/10" },
+  faq: { icon: HelpCircle, color: "text-amber-500 bg-amber-500/10" },
+  csv: { icon: Grid3x3, color: "text-violet-500 bg-violet-500/10" },
+};
 
 export default function KnowledgeManager() {
   const { sources, busy, addText, addFaq, crawl, upload, importFaqCsv, remove } =
@@ -74,10 +84,13 @@ export default function KnowledgeManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <h1 className="sr-only">Knowledge Base</h1>
       {/* Content */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
+          <PageHeader
+            title="Knowledge Base"
+            description="Teach your AI from files, pasted text, FAQs, or your website."
+          />
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Method Tabs */}
             <div className="lg:col-span-1">
@@ -91,12 +104,12 @@ export default function KnowledgeManager() {
                       onClick={() => setMethod(m.id)}
                       className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
                         isActive
-                          ? "bg-primary/10 border-primary text-foreground"
-                          : "bg-card border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                          ? "bg-primary/10 border-primary/40 text-foreground"
+                          : "bg-card border-border text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4" />
+                        <Icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
                         <div>
                           <p className="font-medium text-sm">{m.label}</p>
                           <p className="text-xs opacity-70">{m.hint}</p>
@@ -126,7 +139,7 @@ export default function KnowledgeManager() {
                     />
                     <div
                       onClick={() => !busy && fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                      className="border-2 border-dashed border-border rounded-2xl p-8 text-center hover:border-primary/50 hover:bg-primary/[0.03] transition-all cursor-pointer"
                     >
                       {busy ? (
                         <Loader2 className="h-12 w-12 text-primary mx-auto mb-3 animate-spin" />
@@ -223,7 +236,7 @@ export default function KnowledgeManager() {
                     />
                     <div
                       onClick={() => !busy && csvInputRef.current?.click()}
-                      className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                      className="border-2 border-dashed border-border rounded-2xl p-8 text-center hover:border-primary/50 hover:bg-primary/[0.03] transition-all cursor-pointer"
                     >
                       {busy ? (
                         <Loader2 className="h-12 w-12 text-primary mx-auto mb-3 animate-spin" />
@@ -288,8 +301,16 @@ export default function KnowledgeManager() {
                         className="border-border bg-card/50 p-4 flex items-center justify-between hover:bg-card transition-colors"
                       >
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-primary/10">
-                            <Check className="h-5 w-5 text-primary" />
+                          <div
+                            className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                              (TYPE_ICONS[source.type] ?? TYPE_ICONS.text).color
+                            }`}
+                          >
+                            {(() => {
+                              const SI = (TYPE_ICONS[source.type] ?? TYPE_ICONS.text)
+                                .icon;
+                              return <SI className="h-5 w-5" />;
+                            })()}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-foreground truncate">

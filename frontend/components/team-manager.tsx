@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, UserPlus, Trash2, Copy, Check, Mail } from "lucide-react";
 import { useTeam } from "@/hooks/use-team";
+import { PageHeader } from "@/components/page-header";
 
 const ROLES = [
   { value: "admin", label: "Admin" },
@@ -43,9 +44,12 @@ export default function TeamManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <h1 className="sr-only">Team</h1>
       <div className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto px-8 py-8 space-y-8">
+          <PageHeader
+            title="Team"
+            description="Invite teammates and manage their roles and access."
+          />
           <Card className="border-border bg-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <UserPlus className="h-4 w-4 text-primary" />
