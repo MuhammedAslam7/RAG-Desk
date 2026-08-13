@@ -10,6 +10,7 @@ const APP_PATHS = [
   "/overview",
   "/chat",
   "/conversations",
+  "/live-conversation",
   "/knowledge",
   "/facts",
   "/team",

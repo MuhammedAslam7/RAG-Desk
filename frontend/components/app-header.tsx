@@ -12,8 +12,8 @@ import { SidebarProvider, useSidebar } from "@/lib/sidebar-context";
 
 const PAGE_LABELS: { path: string; label: string }[] = [
   { path: "/overview", label: "Overview" },
-  { path: "/conversations/history", label: "All Conversations" },
-  { path: "/conversations", label: "Live Conversations" },
+  { path: "/conversations", label: "Conversations" },
+  { path: "/live-conversation", label: "Live Conversations" },
   { path: "/chat", label: "Chat" },
   { path: "/knowledge", label: "Knowledge" },
   { path: "/facts", label: "Facts" },
@@ -25,7 +25,7 @@ const PAGE_LABELS: { path: string; label: string }[] = [
 
 function usePageLabel(pathname: string | null): string {
   if (!pathname) return "RAG Desk";
-  // Longest paths first so "/conversations/history" wins over "/conversations".
+  // Longest paths first so more specific routes win.
   const sorted = [...PAGE_LABELS].sort((a, b) => b.path.length - a.path.length);
   const hit = sorted.find(
     (p) => pathname === p.path || pathname.startsWith(p.path + "/")

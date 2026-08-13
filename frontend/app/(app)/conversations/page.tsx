@@ -1,5 +1,5 @@
-import EscalationManager from "@/components/escalation-manager";
+import AllConversations from "@/components/all-conversations";
 
-export default function ConversationsPage() {
-  return <EscalationManager />;
+export default function ConversationsHistoryPage() {
+  return <AllConversations />;
 }

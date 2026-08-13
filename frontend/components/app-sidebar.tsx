@@ -37,8 +37,8 @@ const NAV_GROUPS: {
     label: "Support",
     items: [
       { label: "Chat", icon: MessageSquare, href: "/chat" },
-      { label: "Live Conversations", icon: Inbox, href: "/conversations" },
-      { label: "All Conversations", icon: History, href: "/conversations/history" },
+      { label: "Live Conversations", icon: Inbox, href: "/live-conversation" },
+      { label: "Conversations", icon: History, href: "/conversations" },
     ],
   },
   {

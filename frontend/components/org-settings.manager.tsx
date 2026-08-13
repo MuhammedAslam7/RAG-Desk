@@ -35,8 +35,6 @@ import {
   Smile,
   ShieldCheck,
   Settings2,
-  Menu,
-  X,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -362,27 +360,32 @@ function SectionCard({
   icon: Icon,
   title,
   description,
+  action,
   children,
 }: {
   id: string;
   icon: React.ElementType;
   title: string;
   description?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <Card id={id} className="border-border bg-card overflow-hidden scroll-mt-24">
       <div className="border-b border-border px-6 py-5">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Icon className="h-4 w-4 text-primary" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Icon className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-foreground">{title}</h2>
+              {description && (
+                <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+              )}
+            </div>
           </div>
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-foreground">{title}</h2>
-            {description && (
-              <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
-            )}
-          </div>
+          {action && <div className="flex-shrink-0">{action}</div>}
         </div>
       </div>
       <div className="p-6">{children}</div>
@@ -524,52 +527,6 @@ export default function OrgSettingsManager() {
   return (
     <div className="h-full w-full bg-background flex flex-col relative">
       <h1 className="sr-only">Workspace Settings</h1>
-      {/* ── Header ───────────────────────────────────────────── */}
-      <div className="border-b border-border px-6 h-14 flex items-center justify-between gap-4 flex-shrink-0 bg-card/40 backdrop-blur-sm">
-        <div className="min-w-0 flex items-center gap-2.5">
-          <div className="hidden sm:flex h-7 w-7 rounded-lg bg-primary/10 items-center justify-center flex-shrink-0">
-            <Settings2 className="h-3.5 w-3.5 text-primary" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-[15px] font-semibold text-foreground tracking-tight leading-tight truncate">{org.name}</h2>
-            <p className="text-[11px] text-muted-foreground truncate">Workspace settings</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* ── Mobile hamburger toggle ── */}
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((v) => !v)}
-            className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border bg-input/20 text-foreground hover:border-primary/50 transition-colors"
-            title="Open navigation menu"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
-
-          {/* ── Preview toggle ── */}
-          <button
-            type="button"
-            onClick={() => {
-              const next = !showPreview;
-              setShowPreview(next);
-              if (next) setSidebarOpen(false);
-            }}
-            className={`inline-flex items-center gap-2 h-9 rounded-md border px-3 text-sm transition-colors ${
-              showPreview
-                ? "border-primary/50 bg-primary/10 text-primary"
-                : "border-border bg-input/20 text-foreground hover:border-primary/50"
-            }`}
-          >
-            {showPreview ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-            <span className="hidden sm:inline">{showPreview ? "Hide Preview" : "Show Preview"}</span>
-          </button>
-        </div>
-      </div>
-
       <div className="flex-1 overflow-hidden flex">
         {/* ── Desktop sub-sidebar (collapsible: full ⇄ icons) ──── */}
         <TooltipProvider delay={300}>
@@ -700,71 +657,6 @@ export default function OrgSettingsManager() {
           </div>
         </div>
 
-        {/* ── Mobile sidebar: overlay drawer ────────────────── */}
-        {sidebarOpen && (
-          <div className="lg:hidden fixed inset-0 z-50">
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
-              onClick={() => setSidebarOpen(false)}
-            />
-            {/* Drawer */}
-            <div className="fixed left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-card border-r border-border z-50 overflow-y-auto shadow-2xl animate-in slide-in-from-left duration-300 ease-out">
-              {/* Drawer header */}
-              <div className="flex items-center justify-between px-4 h-14 border-b border-border">
-                <span className="text-sm font-semibold text-foreground">Sections</span>
-                <button
-                  type="button"
-                  onClick={() => setSidebarOpen(false)}
-                  className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              {/* Drawer content */}
-              <div className="py-4 px-3 space-y-5">
-                {SIDEBAR_GROUPS.map((group) => {
-                  const GroupIcon = group.icon;
-                  return (
-                    <div key={group.group}>
-                      <div className="flex items-center gap-2 px-2 mb-1.5">
-                        <GroupIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          {group.group}
-                        </span>
-                      </div>
-                      <div className="space-y-0.5 ml-1">
-                        {group.items.map((item) => {
-                          const ItemIcon = item.icon;
-                          const isActive = activeSection === item.id;
-                          return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => {
-                                scrollToSection(item.id);
-                                setSidebarOpen(false);
-                              }}
-                              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-all ${
-                                isActive
-                                  ? "bg-primary/10 text-primary font-medium"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                              }`}
-                            >
-                              <ItemIcon className="h-4 w-4 flex-shrink-0" />
-                              <span className="truncate">{item.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ── Left: settings form ─────────────────────────────── */}
         <div ref={contentRef} className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-6 py-8 space-y-8 pb-32">
@@ -774,7 +666,36 @@ export default function OrgSettingsManager() {
             </SectionCard>
 
             {/* ── Widget Appearance ─────────────────────────────── */}
-            <SectionCard id="widget-appearance" icon={Palette} title="Widget Appearance" description="Branding, colors, position, and language of your chat widget.">
+            <SectionCard
+              id="widget-appearance"
+              icon={Palette}
+              title="Widget Appearance"
+              description="Branding, colors, position, and language of your chat widget."
+              action={
+                showPreview ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowPreview(false)}
+                    className="inline-flex items-center gap-2 h-10 rounded-lg px-4 text-sm font-semibold border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 transition-colors"
+                  >
+                    <EyeOff className="h-4 w-4" />
+                    Hide Preview
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPreview(true);
+                      setSidebarOpen(false);
+                    }}
+                    className="inline-flex items-center gap-2 h-10 rounded-lg px-4 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/40 hover:shadow-amber-500/60 hover:brightness-110 transition-all"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Live Preview
+                  </button>
+                )
+              }
+            >
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
