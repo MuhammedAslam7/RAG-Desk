@@ -484,8 +484,9 @@ async def google_callback(
 
     try:
         tokens = await exchange_code(code)
-        claims = await verify_id_token(tokens["id_token"])
-    except Exception:
+        claims = await verify_id_token(tokens["id_token"], tokens.get("access_token"))
+    except Exception as e:
+        print("Google OAuth callback failed:", repr(e))
         return _fail("google_error")
 
     google_id = claims.get("sub")

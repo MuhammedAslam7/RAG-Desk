@@ -55,7 +55,7 @@ async def exchange_code(code: str) -> dict:
         return resp.json()
 
 
-async def verify_id_token(id_token: str) -> dict:
+async def verify_id_token(id_token: str, access_token: str | None = None) -> dict:
     """Verify a Google ID token (signature, issuer, audience) and return its claims."""
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(GOOGLE_CERTS_URL)
@@ -67,4 +67,5 @@ async def verify_id_token(id_token: str) -> dict:
         algorithms=["RS256"],
         audience=settings.GOOGLE_CLIENT_ID,
         issuer=list(GOOGLE_ISSUERS),
+        access_token=access_token,
     )
