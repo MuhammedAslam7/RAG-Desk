@@ -129,14 +129,23 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
 
   const [escalated, setEscalated] = useState(false);
   const [escalating, setEscalating] = useState(false);
+  const [resolved, setResolved] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatIdRef = useRef<string | null>(null);
+  const [liveChatId, setLiveChatId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const escalatedRef = useRef(false);
+
+  // Keep the ref (read by async send closures) and the state (read by the SSE
+  // effect) in sync whenever the server assigns a chat id.
+  const setChat = useCallback((id: string | null) => {
+    chatIdRef.current = id;
+    setLiveChatId(id);
+  }, []);
 
   // Keep a ref mirror of `escalated` so async callbacks (e.g. send) never read
   // a stale closure value between the "Talk to human" click and the re-render.
@@ -251,7 +260,7 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
       .then((r) => r.json())
       .then((data: { chatId: string | null; messages: { id: string; sender: string; content: string }[] }) => {
         if (data.chatId) {
-          chatIdRef.current = data.chatId;
+          setChat(data.chatId);
         }
         if (data.messages?.length) {
           // Detect if escalation happened (agent messages present)
@@ -274,7 +283,36 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
       });
   }, [token]);
 
-  // ---- Poll for new agent messages when escalated ----
+  // ---- Real-time updates: agent replies & status changes over SSE ----
+  useEffect(() => {
+    if (!liveChatId || !visitorId) return;
+    const es = new EventSource(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/widget/events?token=${encodeURIComponent(token)}&chatId=${encodeURIComponent(liveChatId)}`
+    );
+    es.onmessage = (e) => {
+      try {
+        const evt = JSON.parse(e.data);
+        if (evt.type === "message" && evt.message) {
+          setMessages((prev) => mergeServerMessages(prev, [evt.message]));
+        } else if (evt.type === "chat_updated") {
+          if (evt.status === "escalated" || evt.status === "human_active") {
+            setEscalated(true);
+          }
+          if (evt.status === "resolved") {
+            setResolved(true);
+            setEscalated(true); // keep the agent-mode header while closed
+          }
+        }
+      } catch {
+        /* ignore heartbeats / non-JSON frames */
+      }
+    };
+    // onerror: EventSource reconnects automatically.
+    return () => es.close();
+  }, [liveChatId, visitorId, token]);
+
+  // Safety net: if the SSE connection drops silently between reconnects, a
+  // slow re-sync while escalated keeps agent replies from being missed.
   useEffect(() => {
     if (!escalated || !visitorId || !chatIdRef.current) return;
     const poll = () => {
@@ -289,7 +327,7 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
         })
         .catch(() => {});
     };
-    pollRef.current = setInterval(poll, 3000);
+    pollRef.current = setInterval(poll, 20000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
@@ -497,7 +535,7 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
           try {
             const parsed = JSON.parse(payload);
             if (parsed.chatId) {
-              chatIdRef.current = parsed.chatId;
+              setChat(parsed.chatId);
             }
             // Chat is in human-handoff mode (escalated / agent takeover /
             // resolved) — the server intentionally won't stream an AI reply.
@@ -612,7 +650,11 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
           <p className="text-sm font-semibold truncate" style={{ color: headerText }}>
             {escalated ? "Support Agent" : (config?.botName || "Support AI")}
           </p>
-          {(escalated) ? (
+          {resolved ? (
+            <p className="text-xs opacity-80 truncate" style={{ color: headerText }}>
+              Conversation closed
+            </p>
+          ) : (escalated) ? (
             <p className="text-xs opacity-80 truncate flex items-center gap-1" style={{ color: headerText }}>
               <span className="inline-block h-2 w-2 rounded-full bg-green-400 animate-pulse" />
               Connected to agent
@@ -806,7 +848,14 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
       )}
 
       {/* Input — show different placeholder when escalated */}
-      {!needsContactForm && (
+      {!needsContactForm &&
+        (resolved ? (
+          <div className="p-3 border-t border-border flex-shrink-0 bg-card text-center">
+            <span className="text-xs text-muted-foreground italic">
+              This conversation has been closed. Thanks for chatting!
+            </span>
+          </div>
+        ) : (
         <div className="flex gap-2 p-3 border-t border-border flex-shrink-0 bg-card">
           <input
             ref={inputRef}
@@ -833,7 +882,7 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
             <Send className="h-4 w-4" />
           </button>
         </div>
-      )}
+        ))}
     </div>
   );
 }

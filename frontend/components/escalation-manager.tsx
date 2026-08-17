@@ -26,6 +26,7 @@ export default function EscalationManager() {
     chats,
     loading,
     refresh,
+    subscribeToEvents,
     getDetail,
     claim,
     sendAgentReply,
@@ -36,10 +37,31 @@ export default function EscalationManager() {
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Auto-poll every 5 seconds
+  // Mirrors the open conversation id so the SSE handler can read it without
+  // re-subscribing on every detail change.
+  const detailIdRef = useRef<string | null>(null);
   useEffect(() => {
-    const interval = setInterval(refresh, 5000);
+    detailIdRef.current = detail?.chatId ?? null;
+  }, [detail]);
+
+  // Real-time updates: any event refreshes the list; if it concerns the open
+  // conversation, the detail is refetched too so new messages appear instantly.
+  useEffect(() => {
+    const unsubscribe = subscribeToEvents((evt) => {
+      refresh().catch(console.error);
+      if (detailIdRef.current && evt.chatId === detailIdRef.current) {
+        getDetail(evt.chatId)
+          .then(setDetail)
+          .catch(console.error);
+      }
+    });
+    return unsubscribe;
+  }, [subscribeToEvents, refresh, getDetail]);
+
+  // Safety net: if the SSE connection ever drops silently (proxy hiccup,
+  // long-lived connection recycled), a slow re-sync keeps the list honest.
+  useEffect(() => {
+    const interval = setInterval(() => refresh().catch(console.error), 30000);
     return () => clearInterval(interval);
   }, [refresh]);
 

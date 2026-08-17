@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.models import Chat, Organization, OrganizationSettings
 from app.repositories import chat_repo
 from app.services.ai.llm import stream_answer, LLMStreamError
+from app.services.realtime import chat_channel, hub, org_channel, sse_stream
 from app.services.facts.service import get_active_facts
 from app.services.rag.prompt import build_system_prompt
 from app.services.rag.retrieval import retrieve_relevant_chunks
@@ -132,13 +133,29 @@ async def widget_chat(
             "phone": body.visitorPhone,
         },
     )
-    await chat_repo.add_message(db, chat.id, "user", body.message, persist=persist)
+    msg = await chat_repo.add_message(db, chat.id, "user", body.message, persist=persist)
 
     # ---- If chat is not in active AI mode, just save the message and return ----
     # This applies to escalated, human_active, and resolved chats. We check the
     # explicit list rather than `status != "active"` so legacy/unknown statuses
     # (e.g. the old "ai_active" backfill) still get AI replies.
     if chat.status in ("escalated", "human_active", "resolved"):
+        # Push the visitor's message to the org dashboard and any open widget
+        # tabs in real time (only when persisted, so the events always match
+        # what the DB will return on refetch).
+        if msg is not None and chat.status in ("escalated", "human_active"):
+            event = {
+                "type": "message",
+                "chatId": chat.id,
+                "message": {
+                    "id": msg.id,
+                    "sender": msg.sender,
+                    "content": msg.content,
+                    "createdAt": msg.createdAt.isoformat(),
+                },
+            }
+            await hub.publish(org_channel(org.id), event)
+            await hub.publish(chat_channel(chat.id), event)
         # Tell the widget why no AI reply is coming so it can switch to
         # agent mode instead of showing a bogus "no response" error.
         async def passthrough_stream():
@@ -338,4 +355,36 @@ async def widget_escalate(
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     chat = await chat_repo.escalate_chat(db, chat.id)
+    event = {"type": "chat_updated", "chatId": chat.id, "status": chat.status}
+    await hub.publish(org_channel(org.id), event)
+    await hub.publish(chat_channel(chat.id), event)
     return EscalationResponse(success=True, chatId=chat.id, status=chat.status)
+
+
+@router.get("/events")
+async def widget_events(
+    token: str,
+    chatId: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """SSE stream of real-time events for one widget conversation.
+
+    The caller must know the org token (public, embedded in the snippet) and
+    the chat's opaque UUID — the same trust model as ``/widget/history``.
+    Emits ``message`` events (agent replies / visitor messages from other
+    tabs) and ``chat_updated`` (escalated / resolved) events.
+    """
+    org_obj, _ = await _get_org_and_settings(db, token)
+    chat = await chat_repo.get_chat_for_org(db, chatId, org_obj.id)
+    if chat is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    return StreamingResponse(
+        sse_stream(chat_channel(chat.id)),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

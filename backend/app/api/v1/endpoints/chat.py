@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models import User
 from app.repositories import chat_repo
 from app.schemas.chat import ChatInitOut, ChatRequest, MessageOut
+from app.services.realtime import chat_channel, hub, org_channel, sse_stream
 from app.schemas.escalation import (
     AgentReplyRequest,
     EscalatedChatOut,
@@ -22,6 +23,27 @@ from app.services.rag.prompt import build_system_prompt
 from app.services.rag.retrieval import retrieve_relevant_chunks
 
 router = APIRouter()
+
+
+@router.get("/events")
+async def chat_events(
+    user: User = Depends(require_org),
+):
+    """SSE stream of real-time escalation events for this org's dashboard.
+
+    Emits ``chat_updated`` (escalation / claim / resolve) and ``message``
+    (new visitor or agent message) events. Clients refetch the list (and the
+    open detail) on each event to stay authoritative.
+    """
+    return StreamingResponse(
+        sse_stream(org_channel(user.organizationId)),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("", response_model=ChatInitOut)
@@ -253,6 +275,7 @@ async def claim_chat(
         if chat_in_db.status != "escalated":
             raise HTTPException(409, "This conversation is no longer available to claim")
         raise HTTPException(409, "Could not claim this conversation")
+    await _publish_status(chat.id, chat.status, user.organizationId)
     return EscalationResponse(success=True, chatId=chat.id, status=chat.status)
 
 
@@ -276,6 +299,7 @@ async def agent_reply(
         raise HTTPException(403, "This conversation is claimed by another agent")
 
     msg = await chat_repo.add_message(db, chat.id, "agent", body.content)
+    await _publish_message(chat.id, msg, user.organizationId)
     return {
         "success": True,
         "message": {
@@ -301,4 +325,30 @@ async def resolve_chat(
         raise HTTPException(400, "This conversation is not currently escalated")
 
     chat = await chat_repo.resolve_chat(db, chat.id)
+    await _publish_status(chat.id, chat.status, user.organizationId)
     return EscalationResponse(success=True, chatId=chat.id, status=chat.status)
+
+
+# ---- Real-time event publishing helpers ----
+
+async def _publish_status(chat_id: str, status: str, org_id: str) -> None:
+    """Broadcast a status change (escalated / human_active / resolved)."""
+    event = {"type": "chat_updated", "chatId": chat_id, "status": status}
+    await hub.publish(org_channel(org_id), event)
+    await hub.publish(chat_channel(chat_id), event)
+
+
+async def _publish_message(chat_id: str, msg, org_id: str) -> None:
+    """Broadcast a newly stored message to the org + chat channels."""
+    event = {
+        "type": "message",
+        "chatId": chat_id,
+        "message": {
+            "id": msg.id,
+            "sender": msg.sender,
+            "content": msg.content,
+            "createdAt": msg.createdAt.isoformat(),
+        },
+    }
+    await hub.publish(org_channel(org_id), event)
+    await hub.publish(chat_channel(chat_id), event)

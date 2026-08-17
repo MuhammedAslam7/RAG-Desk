@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { apiJson, apiFetch } from "@/lib/api-client";
 import {
@@ -8,10 +8,24 @@ import {
   EscalationResult,
 } from "@/types";
 
+export type RealtimeMessage = {
+  id: string;
+  sender: string;
+  content: string;
+  createdAt: string;
+};
+
+export type RealtimeChatEvent =
+  | { type: "chat_updated"; chatId: string; status: string }
+  | { type: "message"; chatId: string; message: RealtimeMessage };
+
+type EventListener = (evt: RealtimeChatEvent) => void;
+
 export function useEscalation() {
   const { isLoaded, isSignedIn } = useAuth();
   const [chats, setChats] = useState<EscalatedChat[]>([]);
   const [loading, setLoading] = useState(true);
+  const listeners = useRef(new Set<EventListener>());
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -30,6 +44,32 @@ export function useEscalation() {
     if (!isLoaded || !isSignedIn) return;
     refresh().catch(console.error);
   }, [isLoaded, isSignedIn, refresh]);
+
+  // Real-time event stream: one EventSource per signed-in user, fanning
+  // events out to every subscriber. EventSource reconnects automatically,
+  // so a dropped connection (deploy, network blip) recovers on its own.
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/chat/events`;
+    const es = new EventSource(url, { withCredentials: true });
+    es.onmessage = (e) => {
+      try {
+        const evt = JSON.parse(e.data) as RealtimeChatEvent;
+        listeners.current.forEach((cb) => cb(evt));
+      } catch {
+        /* ignore heartbeats / non-JSON frames */
+      }
+    };
+    // onerror: EventSource handles reconnection itself; nothing to do here.
+    return () => es.close();
+  }, [isLoaded, isSignedIn]);
+
+  const subscribeToEvents = useCallback((cb: EventListener) => {
+    listeners.current.add(cb);
+    return () => {
+      listeners.current.delete(cb);
+    };
+  }, []);
 
   const getDetail = useCallback(
     (chatId: string) =>
@@ -76,6 +116,7 @@ export function useEscalation() {
     chats,
     loading,
     refresh,
+    subscribeToEvents,
     getDetail,
     claim,
     sendAgentReply,
