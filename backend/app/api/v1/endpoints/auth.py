@@ -6,10 +6,16 @@ both delivered as httpOnly cookies. The refresh token is stored hashed in the
 DB so sessions can be revoked. Email verification and password reset use
 single-use tokens emailed through Brevo.
 """
+import base64
+import hmac
+import json
+import secrets
 import time
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
+from app.services.google_oauth import build_authorization_url, exchange_code, verify_id_token
 from app.core.security import (
     create_refresh_token,
     hash_password,
@@ -383,3 +390,135 @@ async def update_profile(
 @router.get("/me")
 async def me(user: User = Depends(get_current_user)):
     return _user_out(user)
+
+
+# --------------------------------------------------------------------------
+# Google OAuth (Sign in with Google)
+# --------------------------------------------------------------------------
+
+OAUTH_STATE_COOKIE = "oauth_state"
+OAUTH_STATE_TTL = 600  # 10 minutes
+
+
+def _oauth_cookie_kwargs() -> dict:
+    return {
+        "httponly": True,
+        "secure": settings.COOKIE_SECURE,
+        "samesite": "lax",
+        "domain": settings.COOKIE_DOMAIN,
+        "path": "/",
+    }
+
+
+def _encode_oauth_state(state: str, next_url: str | None) -> str:
+    raw = json.dumps({"state": state, "next": next_url}).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("ascii")
+
+
+def _decode_oauth_state(value: str | None) -> dict | None:
+    if not value:
+        return None
+    try:
+        return json.loads(base64.urlsafe_b64decode(value.encode("ascii")))
+    except Exception:
+        return None
+
+
+@router.get("/google/login")
+async def google_login(
+    request: Request,
+    next: str | None = None,
+):
+    """Redirect the user to Google's consent screen."""
+    _check_rate_limit(request)
+    # Only allow relative paths to avoid open redirects.
+    if not next or not next.startswith("/") or next.startswith("//"):
+        next = None
+    state = secrets.token_urlsafe(32)
+    response = RedirectResponse(build_authorization_url(state))
+    response.set_cookie(
+        OAUTH_STATE_COOKIE,
+        _encode_oauth_state(state, next),
+        max_age=OAUTH_STATE_TTL,
+        **_oauth_cookie_kwargs(),
+    )
+    return response
+
+
+@router.get("/google/callback")
+async def google_callback(
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Google redirects here after consent. Verify state, exchange the code,
+    find-or-create the user (linking by verified email when possible), then
+    issue a normal session and send the browser back to the frontend."""
+    frontend = settings.FRONTEND_ORIGIN.rstrip("/")
+    cookie_kwargs = _oauth_cookie_kwargs()
+
+    def _fail(reason: str) -> RedirectResponse:
+        resp = RedirectResponse(f"{frontend}/oauth/callback?error={quote(reason)}")
+        resp.delete_cookie(OAUTH_STATE_COOKIE, **cookie_kwargs)
+        return resp
+
+    payload = _decode_oauth_state(request.cookies.get(OAUTH_STATE_COOKIE))
+    if (
+        payload is None
+        or not isinstance(payload.get("state"), str)
+        or not state
+        or not hmac.compare_digest(payload["state"], state)
+    ):
+        return _fail("invalid_state")
+
+    response = RedirectResponse(
+        f"{frontend}/oauth/callback?next={quote(payload.get('next') or '/overview')}"
+    )
+    response.delete_cookie(OAUTH_STATE_COOKIE, **cookie_kwargs)
+
+    if error or not code:
+        # User cancelled / Google denied — go back to sign-in quietly.
+        return RedirectResponse(f"{frontend}/sign-in")
+
+    try:
+        tokens = await exchange_code(code)
+        claims = await verify_id_token(tokens["id_token"])
+    except Exception:
+        return _fail("google_error")
+
+    google_id = claims.get("sub")
+    if not google_id:
+        return _fail("google_error")
+
+    email = claims.get("email")
+    email_verified = bool(claims.get("email_verified"))
+    name = (claims.get("name") or "").strip() or ((email or "").split("@")[0] or "User")
+
+    user = (
+        await db.execute(select(User).where(User.googleId == google_id))
+    ).scalars().first()
+
+    if user is None and email and email_verified:
+        # Same verified email on an existing password account → link them.
+        user = await _find_by_email(db, email)
+        if user is not None:
+            user.googleId = google_id
+            user.emailVerified = True
+            if not user.name:
+                user.name = name
+
+    if user is None:
+        user = User(
+            googleId=google_id,
+            email=email.lower() if email_verified else None,
+            name=name,
+            emailVerified=email_verified,
+        )
+        db.add(user)
+
+    await db.commit()
+    await db.refresh(user)
+    await _create_session(db, user.id, response)
+    return response

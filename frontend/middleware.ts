@@ -13,6 +13,7 @@ const PUBLIC_PREFIXES = [
   "/verify-email",
   "/invite",
   "/widget",
+  "/oauth",
 ];
 
 function isPublic(pathname: string): boolean {

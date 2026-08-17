@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     BREVO_SENDER_EMAIL: str = "no-reply@ragdesk.app"
     BREVO_SENDER_NAME: str = "RAG Desk"
 
+    # ---- Google OAuth (Sign in with Google) ----
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    # Must exactly match the "Authorized redirect URI" in the Google Cloud console.
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+
     # Chat/generation config — local Ollama
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     CHAT_MODEL: str = "gemma3"

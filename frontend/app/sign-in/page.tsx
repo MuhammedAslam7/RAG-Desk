@@ -8,6 +8,7 @@ import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthShell } from "@/components/auth-shell";
+import { GoogleButton } from "@/components/google-button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 
@@ -92,6 +93,18 @@ function SignInForm() {
         </>
       }
     >
+      <GoogleButton next={next ?? undefined} />
+      <div className="relative my-5">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-card px-2 text-xs text-muted-foreground">
+            or continue with email
+          </span>
+        </div>
+      </div>
+
       <form onSubmit={submit} className="space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">

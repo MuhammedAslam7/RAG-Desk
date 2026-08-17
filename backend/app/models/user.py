@@ -20,6 +20,7 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     name: Mapped[str | None] = mapped_column(String, nullable=True)
     passwordHash: Mapped[str | None] = mapped_column(String, nullable=True)
+    googleId: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)  # Google OAuth sub
     emailVerified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     emailVerifyToken: Mapped[str | None] = mapped_column(String, nullable=True)  # sha256 hash
     emailVerifyExpiresAt: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
