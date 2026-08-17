@@ -48,7 +48,7 @@ export default function EscalationManager() {
   // conversation, the detail is refetched too so new messages appear instantly.
   useEffect(() => {
     const unsubscribe = subscribeToEvents((evt) => {
-      refresh().catch(console.error);
+      refresh(true).catch(console.error);
       if (detailIdRef.current && evt.chatId === detailIdRef.current) {
         getDetail(evt.chatId)
           .then(setDetail)
@@ -61,13 +61,17 @@ export default function EscalationManager() {
   // Safety net: if the SSE connection ever drops silently (proxy hiccup,
   // long-lived connection recycled), a slow re-sync keeps the list honest.
   useEffect(() => {
-    const interval = setInterval(() => refresh().catch(console.error), 30000);
+    const interval = setInterval(() => refresh(true).catch(console.error), 30000);
     return () => clearInterval(interval);
   }, [refresh]);
 
-  // Auto-scroll when messages update
+  // Auto-scroll when messages update — scroll only the messages pane (the
+  // ScrollArea viewport), never the whole page.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const viewport = bottomRef.current?.closest(
+      '[data-slot="scroll-area-viewport"]'
+    );
+    if (viewport) viewport.scrollTop = viewport.scrollHeight;
   }, [detail?.messages.length]);
 
   const openChat = async (chatId: string) => {
@@ -117,7 +121,7 @@ export default function EscalationManager() {
     return detail.messages.map((m) => (
       <div
         key={m.id}
-        className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"} mt-3`}
+        className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
       >
         <div
           className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm break-words whitespace-pre-wrap ${
@@ -167,8 +171,8 @@ export default function EscalationManager() {
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto px-8 py-8">
+      <div className="flex-1 min-h-0 overflow-auto">
+        <div className="max-w-6xl mx-auto px-8 py-8 h-full min-h-0">
           {loading ? (
             <AppLoader label="Loading conversations…" className="min-h-[320px]" />
           ) : chats.length === 0 ? (
@@ -185,16 +189,17 @@ export default function EscalationManager() {
               </p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full min-h-0">
               {/* Left: list of escalated chats */}
-              <div className="space-y-3">
-                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <div className="flex flex-col min-h-0">
+                <h2 className="shrink-0 text-lg font-semibold text-foreground flex items-center gap-2 mb-3">
                   <AlertCircle className="h-4 w-4 text-amber-500" />
                   Open Requests
                   <span className="text-xs font-medium rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
                     {chats.length}
                   </span>
                 </h2>
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
                 {chats.map((c) => (
                   <Card
                     key={c.chatId}
@@ -278,12 +283,13 @@ export default function EscalationManager() {
                     )}
                   </Card>
                 ))}
+                </div>
               </div>
 
               {/* Right: conversation detail */}
-              <div className="lg:sticky lg:top-0">
+              <div className="min-h-0">
                 {detail ? (
-                  <Card className="border-border bg-card flex flex-col h-[600px]">
+                  <Card className="border-border bg-card flex flex-col h-full min-h-0">
                     <div className="flex items-center justify-between p-4 border-b border-border">
                       <div>
                         <p className="font-semibold text-foreground text-sm">
@@ -325,9 +331,11 @@ export default function EscalationManager() {
                         </button>
                       </div>
                     </div>
-                    <ScrollArea className="flex-1 p-4 space-y-3">
-                      {renderMessages()}
-                      <div ref={bottomRef} />
+                    <ScrollArea className="flex-1 min-h-0">
+                      <div className="p-4 space-y-3">
+                        {renderMessages()}
+                        <div ref={bottomRef} />
+                      </div>
                     </ScrollArea>
                     {detail.status === "human_active" && (
                       <div className="border-t border-border p-3 flex gap-2">
@@ -372,7 +380,7 @@ export default function EscalationManager() {
                     )}
                   </Card>
                 ) : (
-                  <Card className="border-border bg-card/50 p-12 text-center h-[600px] flex flex-col items-center justify-center">
+                  <Card className="border-border bg-card/50 p-12 text-center h-full min-h-0 flex flex-col items-center justify-center">
                     <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                       <MessageCircle className="h-7 w-7 text-primary" />
                     </div>

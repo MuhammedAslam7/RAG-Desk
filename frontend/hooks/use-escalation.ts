@@ -27,8 +27,13 @@ export function useEscalation() {
   const [loading, setLoading] = useState(true);
   const listeners = useRef(new Set<EventListener>());
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  /**
+   * Reload the conversation list. Only the first load (or an explicit,
+   * non-silent call) toggles the full-page loader — background refreshes
+   * (SSE events, safety-net poll) pass silent=true so the UI never flashes.
+   */
+  const refresh = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       setChats(
         await apiJson<EscalatedChat[]>("/api/v1/chat/escalated")
@@ -83,7 +88,7 @@ export function useEscalation() {
         `/api/v1/chat/${chatId}/claim`,
         { method: "POST" }
       );
-      await refresh();
+      await refresh(true);
       return result;
     },
     [refresh]
@@ -106,7 +111,7 @@ export function useEscalation() {
         `/api/v1/chat/${chatId}/resolve`,
         { method: "POST" }
       );
-      await refresh();
+      await refresh(true);
       return result;
     },
     [refresh]
