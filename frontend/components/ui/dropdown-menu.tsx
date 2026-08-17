@@ -53,15 +53,20 @@ function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
+// NOTE: rendered as a plain element rather than MenuPrimitive.GroupLabel,
+// because base-ui's GroupLabel throws unless it sits inside a <Menu.Group>.
+// The shadcn-style API contract lets a label be used at the top level of a
+// dropdown (e.g. showing the signed-in user's name), so we avoid the group
+// requirement while keeping the same markup/classes.
 function DropdownMenuLabel({
   className,
   inset,
   ...props
-}: MenuPrimitive.GroupLabel.Props & {
+}: React.ComponentProps<"div"> & {
   inset?: boolean
 }) {
   return (
-    <MenuPrimitive.GroupLabel
+    <div
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
