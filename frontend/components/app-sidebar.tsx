@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useUser, UserButton } from "@clerk/nextjs";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   LayoutDashboard,
@@ -16,7 +16,17 @@ import {
   CreditCard,
   Settings,
   Sparkles,
+  LogOut,
+  ChevronsUpDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSidebar } from "@/lib/sidebar-context";
 import {
   Tooltip,
@@ -61,12 +71,12 @@ const NAV_GROUPS: {
 
 export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { isOpen } = useSidebar();
-  const { user } = useUser();
+  const { user, signOut } = useAuth();
 
-  const displayName =
-    user?.fullName || user?.firstName || user?.username || "Account";
-  const email = user?.primaryEmailAddress?.emailAddress ?? "";
+  const displayName = user?.name || "Account";
+  const email = user?.email ?? "";
   const initials =
     displayName
       .split(" ")
@@ -167,32 +177,55 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
         {/* User footer */}
         <div className="px-3 py-3 flex-shrink-0 border-t border-border/70">
-          {isOpen ? (
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-foreground truncate">
-                    {displayName}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    {email || "Signed in"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex-shrink-0 [&_button]:!bg-transparent [&_button]:!shadow-none [&_svg]:!w-4 [&_svg]:!h-4">
-                <UserButton />
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <UserButton />
-            </div>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className={`flex w-full items-center rounded-lg transition-colors hover:bg-sidebar-accent/60 ${
+                    isOpen ? "gap-2.5 px-2 py-2" : "justify-center p-2"
+                  }`}
+                >
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  {isOpen && (
+                    <>
+                      <span className="flex-1 min-w-0 text-left">
+                        <span className="block text-[13px] font-medium text-foreground truncate">
+                          {displayName}
+                        </span>
+                        <span className="block text-[11px] text-muted-foreground truncate">
+                          {email || "Signed in"}
+                        </span>
+                      </span>
+                      <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    </>
+                  )}
+                </button>
+              }
+            />
+            <DropdownMenuContent align="end" sideOffset={6} className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground truncate">{email || "Signed in"}</p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={async () => {
+                  await signOut();
+                  router.replace("/sign-in");
+                  router.refresh();
+                }}
+              >
+                <LogOut />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
     </TooltipProvider>

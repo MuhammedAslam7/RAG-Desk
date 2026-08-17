@@ -1,7 +1,7 @@
 // frontend/hooks/use-team.ts
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/lib/auth-context";
 import { apiFetch, apiJson } from "@/lib/api-client";
 import { TeamMember, Invitation } from "@/types";
 

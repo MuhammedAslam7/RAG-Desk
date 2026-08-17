@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_org, require_role, get_current_user
 from app.core.config import settings
 from app.core.database import get_db
-from app.models import User
+from app.models import Organization, User
 from app.repositories import invitation_repo, user_repo
+from app.services.email import send_team_invite_email
 from app.schemas.team import (
     InviteCreate, InvitationOut, TeamMemberOut, InvitePreviewOut, RoleUpdate,
 )
@@ -70,6 +71,18 @@ async def create_invite(
         db, org_id=user.organizationId, email=body.email, role=body.role,
         invited_by=user.id,
     )
+
+    # Email the invitee a link to accept (best-effort; failure doesn't block
+    # the invite, the URL is also returned for manual sharing).
+    org = await db.get(Organization, user.organizationId)
+    await send_team_invite_email(
+        to_email=invite.email,
+        invitee_name=None,
+        org_name=org.name if org else "the team",
+        role=invite.role,
+        link=_frontend_invite_url(invite.token),
+    )
+
     return InvitationOut(
         id=invite.id, email=invite.email, role=invite.role, status=invite.status,
         createdAt=invite.createdAt, expiresAt=invite.expiresAt,

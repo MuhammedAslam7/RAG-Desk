@@ -1,26 +1,21 @@
 # backend/app/api/deps.py
 from fastapi import Depends, HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import get_current_clerk_id
+from app.core.security import get_current_user_id
 from app.models import User
 
 
 async def get_current_user(
-    clerk_id: str = Depends(get_current_clerk_id),
+    user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Ensure a User row exists for this Clerk id. Never creates an org."""
-    user = (
-        await db.execute(select(User).where(User.clerkId == clerk_id))
-    ).scalar_one_or_none()
+    """Resolve the authenticated user id (from the verified access token)
+    to a User row. 401 when the account no longer exists."""
+    user = await db.get(User, user_id)
     if user is None:
-        user = User(clerkId=clerk_id, role="owner")
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        raise HTTPException(401, "Account not found")
     return user
 
 

@@ -1,19 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
-import { apiFetch, apiJson } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
+import { apiFetch, apiJson, apiUpload } from "@/lib/api-client";
 import { KnowledgeSource } from "@/types";
-
-async function authedUpload(path: string, form: FormData) {
-  const token = await (window as any).Clerk?.session?.getToken();
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: form,
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res;
-}
 
 export function useKnowledge() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -68,14 +57,14 @@ export function useKnowledge() {
       const form = new FormData();
       form.append("file", file);
       if (title) form.append("title", title);
-      await authedUpload("/api/v1/knowledge/upload", form);
+      await apiUpload("/api/v1/knowledge/upload", form);
     });
 
   const importFaqCsv = (file: File) =>
     wrap(async () => {
       const form = new FormData();
       form.append("file", file);
-      await authedUpload("/api/v1/knowledge/faq/csv", form);
+      await apiUpload("/api/v1/knowledge/faq/csv", form);
     });
 
   const remove = (id: string) =>

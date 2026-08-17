@@ -5,9 +5,22 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/ai_support"
-    CLERK_JWKS_URL: str = ""
     FIRECRAWL_API_KEY: str = ""
     FRONTEND_ORIGIN: str = "http://localhost:3000"
+
+    # ---- Custom auth (JWT access + refresh tokens in httpOnly cookies) ----
+    JWT_SECRET: str = "change-me-to-a-long-random-secret"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_TTL_MINUTES: int = 15
+    REFRESH_TOKEN_TTL_DAYS: int = 30
+    # Cookies
+    COOKIE_SECURE: bool = False       # set True behind HTTPS in production
+    COOKIE_DOMAIN: str | None = None  # e.g. ".ragdesk.com" to share across subdomains
+
+    # ---- Brevo (transactional email) ----
+    BREVO_API_KEY: str = ""
+    BREVO_SENDER_EMAIL: str = "no-reply@ragdesk.app"
+    BREVO_SENDER_NAME: str = "RAG Desk"
 
     # Chat/generation config — local Ollama
     OLLAMA_BASE_URL: str = "http://localhost:11434"

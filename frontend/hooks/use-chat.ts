@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/lib/auth-context";
 import { apiJson, apiStream } from "@/lib/api-client";
 import { ChatMessage } from "@/types";
 

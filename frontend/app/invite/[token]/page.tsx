@@ -2,7 +2,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api-client";
 import SignInPrompt from "@/components/sign-in-prompt";
 import { InvitePreview } from "@/types";
@@ -10,8 +10,7 @@ import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
-  const { isLoaded, isSignedIn } = useAuth();
-  const { user } = useUser();
+  const { isLoaded, isSignedIn, user } = useAuth();
   const router = useRouter();
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [accepting, setAccepting] = useState(false);
@@ -25,11 +24,11 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
       .catch(() => setPreview({ valid: false, reason: "Something went wrong." }));
   }, [token]);
 
-  // Sync the Clerk email to the backend the moment we're signed in on this page,
+  // Sync the user's email to the backend the moment we're signed in on this page,
   // so accept_invite's email check has something to compare against.
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
-    const email = user?.primaryEmailAddress?.emailAddress;
+    const email = user?.email;
     if (!email) return;
     setSyncing(true);
     apiFetch("/api/v1/org/sync", {

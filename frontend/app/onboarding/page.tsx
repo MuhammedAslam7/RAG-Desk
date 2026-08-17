@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, apiUpload } from "@/lib/api-client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -270,17 +270,7 @@ export default function Onboarding() {
       if (logoFile) {
         const fd = new FormData();
         fd.append("file", logoFile);
-        const clerk = (window as Window & { Clerk?: { session?: { getToken?: () => Promise<string | null> } } }).Clerk;
-        const token = await clerk?.session?.getToken?.();
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/org/upload-logo`,
-          {
-            method: "POST",
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-            body: fd,
-          }
-        );
-        if (!res.ok) throw new Error("Logo upload failed");
+        const res = await apiUpload("/api/v1/org/upload-logo", fd);
         const data = await res.json();
         logo_url = `${process.env.NEXT_PUBLIC_API_URL}${data.url}`;
       }

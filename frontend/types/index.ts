@@ -5,6 +5,15 @@ export interface ChatMessage {
   createdAt?: string;
 }
 
+export interface AuthUser {
+  id: string;
+  name: string | null;
+  email: string | null;
+  emailVerified: boolean;
+  role: string;
+  organizationId: string | null;
+}
+
 export interface Fact {
   id: string;
   subject: string;

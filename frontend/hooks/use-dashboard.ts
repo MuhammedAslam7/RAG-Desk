@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/lib/auth-context";
 import { apiJson } from "@/lib/api-client";
 import { DashboardSummary } from "@/types";
 

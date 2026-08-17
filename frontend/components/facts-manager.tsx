@@ -64,15 +64,17 @@ export default function FactsManager() {
         <div className="max-w-6xl mx-auto px-8 py-8">
           <div className="flex justify-end mb-4">
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  onClick={openCreate}
-                  className="gap-2 bg-primary hover:bg-primary/90"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Fact
-                </Button>
-              </DialogTrigger>
+              <DialogTrigger
+                render={
+                  <Button
+                    onClick={openCreate}
+                    className="gap-2 bg-primary hover:bg-primary/90"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Fact
+                  </Button>
+                }
+              />
               <DialogContent className="border-border bg-card">
               <DialogHeader>
                 <DialogTitle className="text-foreground">

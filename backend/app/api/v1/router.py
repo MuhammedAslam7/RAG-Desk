@@ -1,9 +1,10 @@
 # backend/app/api/v1/router.py
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import chat, dashboard, facts, knowledge, onboarding, settings, team, widget
+from app.api.v1.endpoints import auth, chat, dashboard, facts, knowledge, onboarding, settings, team, widget
 
 api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 api_router.include_router(facts.router, prefix="/facts", tags=["facts"])

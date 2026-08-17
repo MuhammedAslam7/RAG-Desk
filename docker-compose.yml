@@ -18,6 +18,13 @@ services:
       - "8000:8000"
     depends_on:
       - db
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-no-reply@ragdesk.app}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-RAG Desk}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      FRONTEND_ORIGIN: http://localhost:3000
 
   frontend:
     build: ./frontend
@@ -29,6 +36,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
       INTERNAL_API_URL: http://backend:8000
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
 
   adminer:
     image: adminer

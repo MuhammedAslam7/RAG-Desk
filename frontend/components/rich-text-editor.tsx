@@ -129,7 +129,7 @@ export function RichTextEditor({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => applyFormat("createLink", prompt("Enter URL:"))}
+          onClick={() => applyFormat("createLink", prompt("Enter URL:") ?? undefined)}
           title="Link"
           className="h-8 w-8 p-0 hover:bg-secondary"
         >
@@ -149,16 +149,18 @@ export function RichTextEditor({
         <div className="w-px h-6 bg-border mx-1" />
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              title="More options"
-              className="h-8 w-8 p-0 hover:bg-secondary"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                title="More options"
+                className="h-8 w-8 p-0 hover:bg-secondary"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            }
+          />
           <DropdownMenuContent align="end" className="bg-card border-border">
             <DropdownMenuItem onClick={() => applyFormat("indent")}>
               Indent

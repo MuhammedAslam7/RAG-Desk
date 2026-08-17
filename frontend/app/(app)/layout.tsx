@@ -1,34 +1,44 @@
 // frontend/app/(app)/layout.tsx
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppHeader } from "@/components/app-header";
 import { SidebarProvider } from "@/lib/sidebar-context";
 import { ProfileSync } from "@/components/profile-sync";
 
-async function hasOrg(token: string | null): Promise<boolean> {
-  if (!token) return false;
+interface SessionUser {
+  id: string;
+  email: string | null;
+  name: string | null;
+  emailVerified: boolean;
+  role: string;
+  organizationId: string | null;
+}
+
+/** Authoritative server-side auth check — forwards the httpOnly cookies to the
+ *  backend and asks it to validate the session. */
+async function getSession(): Promise<SessionUser | null> {
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
+  if (!cookieHeader.includes("access_token")) return null;
   try {
     const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL;
-    const res = await fetch(`${apiUrl}/api/v1/org/me`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await fetch(`${apiUrl}/api/v1/auth/me`, {
+      headers: { cookie: cookieHeader },
       cache: "no-store",
     });
-    if (!res.ok) return false;
-    const data = await res.json();
-    return data.hasOrg === true;
+    if (!res.ok) return null;
+    return (await res.json()) as SessionUser;
   } catch {
-    return false;
+    return null;
   }
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { userId, getToken } = await auth();
+  const session = await getSession();
 
-  if (!userId) redirect("/sign-in");
-
-  const token = await getToken();
-  if (!(await hasOrg(token))) redirect("/onboarding");
+  if (!session) redirect("/sign-in");
+  if (!session.organizationId) redirect("/onboarding");
 
   return (
     <SidebarProvider>

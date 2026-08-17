@@ -2,7 +2,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
+import { AuthProvider } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -22,7 +22,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <ClerkProvider>
+    <AuthProvider>
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
         <body className="h-full bg-background text-foreground antialiased flex flex-col">
           {/* No-flash theme script — applies the saved theme before first paint */}
@@ -35,6 +35,6 @@ export default function RootLayout({
           <ThemeToggle />
         </body>
       </html>
-    </ClerkProvider>
+    </AuthProvider>
   );
 }
