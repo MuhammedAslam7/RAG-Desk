@@ -1,5 +1,5 @@
 "use client";
-
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -40,42 +40,55 @@ const NAV_GROUPS: {
   label: string;
   items: { label: string; icon: React.ElementType; href: string }[];
 }[] = [
-  {
-    label: "Overview",
-    items: [{ label: "Overview", icon: LayoutDashboard, href: "/overview" }],
-  },
-  {
-    label: "Support",
-    items: [
-      { label: "Chat", icon: MessageSquare, href: "/chat" },
-      { label: "Live Conversations", icon: Inbox, href: "/live-conversation" },
-      { label: "Conversations", icon: History, href: "/conversations" },
-    ],
-  },
-  {
-    label: "Content",
-    items: [
-      { label: "Knowledge", icon: BookOpen, href: "/knowledge" },
-      { label: "Facts", icon: Lightbulb, href: "/facts" },
-    ],
-  },
-  {
-    label: "Workspace",
-    items: [
-      { label: "Team", icon: Users, href: "/team" },
-      { label: "Notifications", icon: Bell, href: "/notifications" },
-      { label: "Billing", icon: CreditCard, href: "/billing" },
-      { label: "Settings", icon: Settings, href: "/settings" },
-    ],
-  },
-];
+    {
+      label: "Overview",
+      items: [{ label: "Overview", icon: LayoutDashboard, href: "/overview" }],
+    },
+    {
+      label: "Support",
+      items: [
+        { label: "Chat", icon: MessageSquare, href: "/chat" },
+        { label: "Live Conversations", icon: Inbox, href: "/live-conversation" },
+        { label: "Conversations", icon: History, href: "/conversations" },
+      ],
+    },
+    {
+      label: "Content",
+      items: [
+        { label: "Knowledge", icon: BookOpen, href: "/knowledge" },
+        { label: "Facts", icon: Lightbulb, href: "/facts" },
+      ],
+    },
+    {
+      label: "Workspace",
+      items: [
+        { label: "Team", icon: Users, href: "/team" },
+        { label: "Notifications", icon: Bell, href: "/notifications" },
+        { label: "Billing", icon: CreditCard, href: "/billing" },
+        { label: "Settings", icon: Settings, href: "/settings" },
+      ],
+    },
+  ];
 
 export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
+
+
+
   const pathname = usePathname();
   const router = useRouter();
   const { isOpen } = useSidebar();
   const { user, signOut } = useAuth();
   const { unreadCount } = useNotifications();
+  const prevUnreadRef = useRef(unreadCount);
+  const [pulseKey, setPulseKey] = useState(0);
+
+  useEffect(() => {
+    if (unreadCount > prevUnreadRef.current) {
+      setPulseKey((k) => k + 1);
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount]);
+
 
   const displayName = user?.name || "Account";
   const email = user?.email ?? "";
@@ -94,9 +107,8 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <TooltipProvider delay={0}>
       <aside
-        className={`border-r border-border bg-sidebar flex flex-col h-screen transition-all duration-300 ${
-          isOpen ? "w-60" : "w-[68px]"
-        }`}
+        className={`border-r border-border bg-sidebar flex flex-col h-screen transition-all duration-300 ${isOpen ? "w-60" : "w-[68px]"
+          }`}
       >
         {/* Brand */}
         <div className="px-4 py-4 flex-shrink-0">
@@ -139,34 +151,30 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                         key={item.href}
                         href={item.href}
                         onClick={onNavigate}
-                        className={`relative flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm transition-all ${
-                          isOpen ? "" : "justify-center"
-                        } ${
-                          active
+                        className={`relative flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm transition-all ${isOpen ? "" : "justify-center"
+                          } ${active
                             ? "bg-sidebar-accent text-foreground font-medium"
                             : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
-                        }`}
+                          }`}
                       >
                         {active && (
                           <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-primary" />
                         )}
                         <Icon
                           key={
-                            item.href === "/notifications" ? badge : undefined
+                            item.href === "/notifications" ? `bell-${pulseKey}` : undefined
                           }
-                          className={`h-[18px] w-[18px] flex-shrink-0 ${
-                            active ? "text-primary" : ""
-                          } ${
-                            item.href === "/notifications" && badge > 0
+                          className={`h-[18px] w-[18px] flex-shrink-0 ${active ? "text-primary" : ""
+                            } ${item.href === "/notifications" && badge > 0
                               ? "text-rose-400"
                               : ""
-                          }`}
+                            }`}
                           style={
                             item.href === "/notifications" && badge > 0
                               ? {
-                                  animation:
-                                    "bell-shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97)",
-                                }
+                                animation:
+                                  "bell-shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97)",
+                              }
                               : undefined
                           }
                         />
@@ -225,9 +233,8 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
               render={
                 <button
                   type="button"
-                  className={`flex w-full items-center rounded-lg transition-colors hover:bg-sidebar-accent/60 ${
-                    isOpen ? "gap-2.5 px-2 py-2" : "justify-center p-2"
-                  }`}
+                  className={`flex w-full items-center rounded-lg transition-colors hover:bg-sidebar-accent/60 ${isOpen ? "gap-2.5 px-2 py-2" : "justify-center p-2"
+                    }`}
                 >
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
