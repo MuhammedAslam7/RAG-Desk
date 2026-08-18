@@ -1,69 +1,218 @@
-import Image from "next/image";
+"use client";
+
+import {
+  Box,
+  Button,
+  Container,
+  Heading,
+  Text,
+  HStack,
+  VStack,
+  Flex,
+  Card,
+  Badge,
+  Avatar,
+  Input,
+  Separator,
+  Icon,
+  Stack,
+
+  SimpleGrid,
+  Stat,
+  Alert,
+  CloseButton,
+} from "@chakra-ui/react";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <Container maxW="container.xl" py={8}>
+      {/* Header */}
+      <Flex justify="space-between" align="center" mb={8}>
+        <VStack align="start" gap={0}>
+          <Heading size="2xl" color="fg.default">
+            RAG Desk Admin
+          </Heading>
+          <Text color="fg.muted">Admin Dashboard — Powered by Chakra UI</Text>
+        </VStack>
+        <HStack gap={3}>
+          <Button variant="outline" size="sm">
+            Docs
+          </Button>
+          <Button colorPalette="teal" size="sm">
+            Get Started
+          </Button>
+        </HStack>
+      </Flex>
+
+      <Separator mb={8} />
+
+      {/* Stats Row */}
+      <SimpleGrid columns={{ base: 1, md: 4 }} gap={4} mb={8}>
+        {[
+          { label: "Total Users", value: "1,234", change: "+12%" },
+          { label: "Active Chats", value: "56", change: "+5%" },
+          { label: "Knowledge Sources", value: "89", change: "+8%" },
+          { label: "Avg Response Time", value: "1.2s", change: "-3%" },
+        ].map((stat) => (
+          <Card.Root key={stat.label} size="sm">
+            <Card.Body>
+              <Stat.Root>
+                <Stat.Label>{stat.label}</Stat.Label>
+                <HStack justify="space-between">
+                  <Stat.ValueText>{stat.value}</Stat.ValueText>
+                  <Badge
+                    colorPalette={stat.change.startsWith("+") ? "green" : "red"}
+                    size="sm"
+                    variant="subtle"
+                  >
+                    {stat.change}
+                  </Badge>
+                </HStack>
+              </Stat.Root>
+            </Card.Body>
+          </Card.Root>
+        ))}
+      </SimpleGrid>
+
+      {/* Content Grid */}
+      <SimpleGrid columns={{ base: 1, md: 2 }} gap={6} mb={8}>
+        {/* Recent Activity Card */}
+        <Card.Root>
+          <Card.Header>
+            <Heading size="md">Recent Activity</Heading>
+          </Card.Header>
+          <Card.Body>
+            <Stack gap={4}>
+              {[
+                {
+                  name: "Sarah Chen",
+                  action: "added a new knowledge source",
+                  time: "2 min ago",
+                  color: "bg.green.500",
+                },
+                {
+                  name: "James Wilson",
+                  action: "updated widget settings",
+                  time: "15 min ago",
+                  color: "bg.blue.500",
+                },
+                {
+                  name: "Maria Garcia",
+                  action: "resolved a customer chat",
+                  time: "1 hour ago",
+                  color: "bg.purple.500",
+                },
+                {
+                  name: "Alex Thompson",
+                  action: "invited a new team member",
+                  time: "3 hours ago",
+                  color: "bg.orange.500",
+                },
+              ].map((item, i) => (
+                <HStack key={i} gap={3}>
+                  <Avatar.Root size="sm">
+                    <Avatar.Fallback name={item.name} />
+                  </Avatar.Root>
+                  <Box flex="1">
+                    <Text fontSize="sm" fontWeight="medium">
+                      {item.name}
+                    </Text>
+                    <Text fontSize="xs" color="fg.muted">
+                      {item.action}
+                    </Text>
+                  </Box>
+                  <Text fontSize="xs" color="fg.muted" whiteSpace="nowrap">
+                    {item.time}
+                  </Text>
+                </HStack>
+              ))}
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+
+        {/* Quick Actions Card */}
+        <Card.Root>
+          <Card.Header>
+            <Heading size="md">Quick Actions</Heading>
+          </Card.Header>
+          <Card.Body>
+            <Stack gap={3}>
+              <Alert.Root status="info" variant="subtle">
+                <Alert.Indicator />
+                <Box flex="1">
+                  <Alert.Title>System Update</Alert.Title>
+                  <Alert.Description>
+                    A new version of the knowledge engine is available. Update to
+                    get improved embeddings.
+                  </Alert.Description>
+                </Box>
+                <CloseButton size="xs" />
+              </Alert.Root>
+
+              <Text fontSize="sm" fontWeight="medium" pt={2}>
+                Management
+              </Text>
+              <HStack gap={3} flexWrap="wrap">
+                <Button size="sm" variant="subtle" colorPalette="teal">
+                  Manage Users
+                </Button>
+                <Button size="sm" variant="subtle" colorPalette="blue">
+                  Knowledge Base
+                </Button>
+                <Button size="sm" variant="subtle" colorPalette="purple">
+                  Widget Config
+                </Button>
+                <Button size="sm" variant="subtle" colorPalette="orange">
+                  Billing
+                </Button>
+              </HStack>
+
+              <Text fontSize="sm" fontWeight="medium" pt={2}>
+                API Status
+              </Text>
+              <HStack gap={2}>
+                <Badge colorPalette="green" variant="solid" size="sm">
+                  API Online
+                </Badge>
+                <Badge colorPalette="green" variant="solid" size="sm">
+                  Database OK
+                </Badge>
+                <Badge colorPalette="green" variant="solid" size="sm">
+                  Embeddings Ready
+                </Badge>
+              </HStack>
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+      </SimpleGrid>
+
+      {/* Code Sample */}
+      <Card.Root mb={8}>
+        <Card.Header>
+          <Heading size="md">System Info</Heading>
+        </Card.Header>
+        <Card.Body>
+          <Box as="pre" p={4} fontSize="sm" borderRadius="md" bg="bg.muted" overflowX="auto" fontFamily="mono">
+            {`// Chakra UI v3 is now active in admin-frontend
+// Components available: Button, Card, Badge, Avatar, Input,
+// Heading, Text, Stack, Grid, Alert, Stat, and many more.
+
+import { Button } from "@chakra-ui/react";
+
+export default function Demo() {
+  return <Button colorPalette="teal">Click me</Button>;
+}`}
+          </Box>
+        </Card.Body>
+      </Card.Root>
+
+      {/* Footer */}
+      <Separator />
+      <Flex justify="center" py={4}>
+        <Text fontSize="sm" color="fg.muted">
+          RAG Desk Admin • Built with Chakra UI v3 + Next.js
+        </Text>
+      </Flex>
+    </Container>
   );
 }
