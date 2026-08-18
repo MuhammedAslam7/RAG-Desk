@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSidebar } from "@/lib/sidebar-context";
+import { useNotifications } from "@/hooks/use-notifications";
 import {
   Tooltip,
   TooltipContent,
@@ -74,6 +75,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
   const { isOpen } = useSidebar();
   const { user, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const displayName = user?.name || "Account";
   const email = user?.email ?? "";
@@ -129,6 +131,8 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   {group.items.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
+                    const badge =
+                      item.href === "/notifications" ? unreadCount : 0;
 
                     const link = (
                       <Link
@@ -154,6 +158,16 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                         {isOpen && (
                           <span className="truncate">{item.label}</span>
                         )}
+                        {badge > 0 &&
+                          (isOpen ? (
+                            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                              {badge > 99 ? "99+" : badge}
+                            </span>
+                          ) : (
+                            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                              {badge > 99 ? "99+" : badge}
+                            </span>
+                          ))}
                       </Link>
                     );
 

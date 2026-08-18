@@ -32,6 +32,10 @@ def chat_channel(chat_id: str) -> str:
     return f"chat:{chat_id}"
 
 
+def user_channel(user_id: str) -> str:
+    return f"user:{user_id}"
+
+
 class RealtimeHub:
     """Fan events out to every subscriber of a channel.
 

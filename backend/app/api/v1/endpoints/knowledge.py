@@ -41,6 +41,7 @@ from app.services.knowledge.parsers.csv_faq import parse_faq_csv
 from app.services.knowledge.parsers.csv_parser import parse_csv
 from app.services.knowledge.parsers.docx import parse_docx
 from app.services.knowledge.parsers.pdf import parse_pdf
+from app.services.notifications import notify_org
 
 router = APIRouter()
 
@@ -79,7 +80,7 @@ async def _run_upload_job(
             fail_job(job, "Unsupported file type")
             return
         async with AsyncSessionLocal() as db:
-            await ingest_document(
+            src = await ingest_document(
                 db,
                 org_id=org_id,
                 title=title or filename,
@@ -87,6 +88,15 @@ async def _run_upload_job(
                 source_type=stype,
                 added_by_id=added_by_id,
                 on_progress=report,
+            )
+            await notify_org(
+                db,
+                org_id=org_id,
+                actor_id=added_by_id,
+                type_="knowledge",
+                title="New knowledge added",
+                message=title or filename,
+                source_id=src.id,
             )
         complete_job(job, "Upload complete")
     except JobCancelledError:
@@ -138,6 +148,14 @@ async def _run_crawl_job(
                     added_by_id=added_by_id,
                     on_progress=report,
                 )
+            await notify_org(
+                db,
+                org_id=org_id,
+                actor_id=added_by_id,
+                type_="knowledge",
+                title="New knowledge added",
+                message=f"{total} pages from {url}",
+            )
         complete_job(job, f"Crawl complete — {total} pages ready")
     except JobCancelledError:
         pass  # status already set to cancelled by the cancel endpoint
@@ -170,6 +188,10 @@ async def add_text(
         db, org_id=user.organizationId, title=body.title,
         text=body.content, source_type="text", added_by_id=user.id,
     )
+    await notify_org(
+        db, org_id=user.organizationId, actor_id=user.id, type_="knowledge",
+        title="New knowledge added", message=body.title, source_id=src.id,
+    )
     return {"id": src.id}
 
 
@@ -183,6 +205,10 @@ async def add_faq(
     src = await ingest_document(
         db, org_id=user.organizationId, title=body.question[:80],
         text=text, source_type="faq", added_by_id=user.id,
+    )
+    await notify_org(
+        db, org_id=user.organizationId, actor_id=user.id, type_="knowledge",
+        title="New knowledge added", message=body.question[:120], source_id=src.id,
     )
     return {"id": src.id}
 
@@ -205,6 +231,10 @@ async def import_faq_csv(
             added_by_id=user.id,
         )
         ids.append(src.id)
+    await notify_org(
+        db, org_id=user.organizationId, actor_id=user.id, type_="knowledge",
+        title="New knowledge added", message=f"{len(ids)} FAQ entries imported",
+    )
     return {"imported": len(ids)}
 
 

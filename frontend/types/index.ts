@@ -47,6 +47,23 @@ export interface KnowledgeJob {
   indeterminate?: boolean;
 }
 
+export interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  sourceId: string | null;
+  read: boolean;
+  createdAt: string;
+  actorName: string | null;
+}
+
+export interface NotificationList {
+  items: AppNotification[];
+  total: number;
+  unreadCount: number;
+}
+
 export interface OrganizationSettings {
   websiteUrl: string | null;
   fallbackEmail: string | null;
