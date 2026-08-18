@@ -17,6 +17,7 @@ Three layers, in order of processing:
    LLM, so answers get full context.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 import math
 import re
@@ -288,12 +289,14 @@ def _split_threshold(sims: list[float]) -> float:
 async def chunk_document(
     text: str,
     embed_fn=None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> list[Chunk]:
     """Chunk a document into parent-child chunks.
 
     ``embed_fn(texts: list[str]) -> list[list[float]]`` is optional; when given,
     long sections get embedding-based semantic splitting. If embedding fails we
-    transparently fall back to sentence-boundary chunking.
+    transparently fall back to sentence-boundary chunking. ``on_progress(done,
+    total)`` is called after each section is processed.
     """
     text = (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     if not text:
@@ -301,6 +304,8 @@ async def chunk_document(
 
     sections = _split_sections(text)
     chunks: list[Chunk] = []
+    total = len(sections)
+    done = 0
     for heading, section in sections:
         if len(section) <= settings.CHUNK_TARGET:
             # Small sections are a single child that is also its own parent.
@@ -311,6 +316,9 @@ async def chunk_document(
             chunks.extend(await _semantic_chunk_section(heading, section, embed_fn, preserve_indent=is_code))
         else:
             chunks.extend(_plain_chunk_section(heading, section, preserve_indent=is_code))
+        done += 1
+        if on_progress is not None:
+            on_progress(done, total)
     return chunks
 
 

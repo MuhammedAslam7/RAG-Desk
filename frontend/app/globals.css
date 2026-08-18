@@ -236,6 +236,12 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Indeterminate progress bar (sweeping bar) for steps with unknown duration */
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
 @keyframes widget-slide-in {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }

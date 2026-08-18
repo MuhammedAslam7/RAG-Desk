@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useKnowledge } from "@/hooks/use-knowledge";
+import { useKnowledgeJobs } from "@/hooks/use-knowledge-jobs";
 
 type Method = "upload" | "paste" | "faq" | "faqcsv" | "crawl";
 
@@ -41,7 +42,7 @@ type PendingAdd = {
   label: string;
   title: string;
   detail: string;
-  run: () => Promise<void>;
+  run: () => void;
 };
 
 const truncate = (s: string, n = 160) =>
@@ -70,6 +71,7 @@ export default function KnowledgeManager() {
     importFaqCsv,
     remove,
   } = useKnowledge();
+  const { startJob } = useKnowledgeJobs();
   const [method, setMethod] = useState<Method>("upload");
   const [formData, setFormData] = useState({ title: "", content: "", url: "" });
   const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
@@ -85,8 +87,17 @@ export default function KnowledgeManager() {
     setPendingAdd({
       label: "Upload file",
       title: file.name,
-      detail: `File size: ${(file.size / 1024).toFixed(1)} KB. It will be processed and added to your knowledge base.`,
-      run: () => upload(file, formData.title || undefined).then(resetForm),
+      detail: `File size: ${(file.size / 1024).toFixed(1)} KB. Your AI will be able to answer questions from this file.`,
+      run: () =>
+        startJob({
+          kind: "upload",
+          initial: {
+            stage: "uploading",
+            progress: 0,
+            message: `Uploading ${file.name}…`,
+          },
+          run: (ctx) => upload(file, formData.title || undefined, ctx.update).then(resetForm),
+        }),
     });
   };
 
@@ -97,8 +108,10 @@ export default function KnowledgeManager() {
     setPendingAdd({
       label: "Import CSV",
       title: file.name,
-      detail: `File size: ${(file.size / 1024).toFixed(1)} KB. Its Q&A rows will be added to your knowledge base.`,
-      run: () => importFaqCsv(file),
+      detail: `File size: ${(file.size / 1024).toFixed(1)} KB. Your AI will be able to answer questions from these Q&A pairs.`,
+      run: () => {
+        importFaqCsv(file).catch(console.error);
+      },
     });
   };
 
@@ -108,8 +121,11 @@ export default function KnowledgeManager() {
       label: "Paste text",
       title: formData.title || "Untitled",
       detail: truncate(formData.content),
-      run: () =>
-        addText(formData.title || "Untitled", formData.content).then(resetForm),
+      run: () => {
+        addText(formData.title || "Untitled", formData.content)
+          .then(resetForm)
+          .catch(console.error);
+      },
     });
   };
 
@@ -119,7 +135,9 @@ export default function KnowledgeManager() {
       label: "Add FAQ",
       title: formData.title,
       detail: truncate(formData.content),
-      run: () => addFaq(formData.title, formData.content).then(resetForm),
+      run: () => {
+        addFaq(formData.title, formData.content).then(resetForm).catch(console.error);
+      },
     });
   };
 
@@ -129,8 +147,17 @@ export default function KnowledgeManager() {
       label: "Crawl website",
       title: formData.url,
       detail:
-        "The crawler will fetch pages from this website and add them to your knowledge base.",
-      run: () => crawl(formData.url).then(resetForm),
+        "Your AI will be able to answer questions from this website's pages.",
+      run: () =>
+        startJob({
+          kind: "crawl",
+          initial: {
+            stage: "crawling",
+            progress: 0,
+            message: `Starting crawl of ${formData.url}…`,
+          },
+          run: (ctx) => crawl(formData.url, 10, ctx.update).then(resetForm),
+        }),
     });
   };
 

@@ -34,6 +34,18 @@ export interface KnowledgeSourceList {
   total: number;
 }
 
+export interface KnowledgeJob {
+  id: string;
+  kind: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  stage: string;
+  progress: number;
+  message: string;
+  error: string | null;
+  /** True when progress can't be measured (e.g. crawl discovery) — render an animated bar. */
+  indeterminate?: boolean;
+}
+
 export interface OrganizationSettings {
   websiteUrl: string | null;
   fallbackEmail: string | null;

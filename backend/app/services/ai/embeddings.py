@@ -12,6 +12,7 @@ used for the cross-encoder reranker in app/services/rag/rerank.py.
 import asyncio
 import threading
 from collections import OrderedDict
+from collections.abc import Callable
 from functools import lru_cache
 
 from app.core.config import settings
@@ -136,12 +137,17 @@ async def embed_document(text: str) -> list[float]:
     return results[0]
 
 
-async def embed_documents(texts: list[str], concurrency: int | None = None) -> list[list[float]]:
+async def embed_documents(
+    texts: list[str],
+    concurrency: int | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> list[list[float]]:
     """Embed many texts. Unlike the API-based versions, this does NOT fan
     out into N concurrent requests — it batches everything into as few
     model.encode() calls as possible, which is far more efficient for a
     local model than issuing many small calls. `concurrency` is accepted
-    for signature compatibility but unused."""
+    for signature compatibility but unused. `on_progress(done, total)` is
+    called after each model batch so callers can render a progress bar."""
     if not texts:
         return []
 
@@ -156,9 +162,15 @@ async def embed_documents(texts: list[str], concurrency: int | None = None) -> l
         async with load_lock:
             model = await asyncio.to_thread(_load_model)
         async with encode_lock:
-            fresh = await asyncio.to_thread(
-                _encode_document_sync, model, [texts[i] for i in to_embed_idx]
-            )
+            to_embed = [texts[i] for i in to_embed_idx]
+            fresh: list[list[float]] = []
+            done = 0
+            for start in range(0, len(to_embed), settings.EMBED_BATCH_SIZE):
+                batch = to_embed[start : start + settings.EMBED_BATCH_SIZE]
+                fresh.extend(await asyncio.to_thread(_encode_document_sync, model, batch))
+                done += len(batch)
+                if on_progress is not None:
+                    on_progress(done, len(to_embed))
         for idx, vec in zip(to_embed_idx, fresh):
             cached[idx] = vec
             _cache_set(keys[idx], vec)

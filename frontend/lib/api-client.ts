@@ -65,6 +65,39 @@ export async function apiUpload(path: string, form: FormData): Promise<Response>
   return res;
 }
 
+/**
+ * Multipart upload that reports real byte-level progress via XMLHttpRequest
+ * (fetch has no upload-progress events). Resolves with the parsed JSON body
+ * (e.g. `{ jobId }`) once the request completes.
+ */
+export function apiUploadJob(
+  path: string,
+  form: FormData,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<Record<string, string>> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${BASE}${path}`);
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(e.loaded, e.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          resolve({});
+        }
+      } else {
+        reject(new Error(xhr.responseText || `API ${xhr.status}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.send(form);
+  });
+}
+
 // Streams an SSE endpoint, calling onToken for each text token.
 export async function apiStream(
   path: string,
