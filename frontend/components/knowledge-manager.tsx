@@ -432,11 +432,19 @@ export default function KnowledgeManager() {
                             <p className="font-medium text-foreground truncate">
                               {source.title}
                             </p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-2">
-                              {new Date(source.createdAt).toLocaleDateString()} •{" "}
+                            <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                              {new Date(source.createdAt).toLocaleDateString()}
+                              <span>•</span>
                               <Badge variant="secondary" className="text-xs font-medium">
                                 {source.type.toUpperCase()}
                               </Badge>
+                              {source.addedBy && (
+                                <>
+                                  <span>•</span>
+                                  <span className="truncate">Added by {source.addedBy}</span>
+                                </>
+                              )}
+                              <span>•</span>
                               <span>{source.chunkCount} chunks</span>
                             </p>
                           </div>

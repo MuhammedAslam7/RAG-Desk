@@ -23,6 +23,7 @@ class KnowledgeSourceOut(BaseModel):
     type: str
     chunkCount: int
     createdAt: datetime
+    addedBy: str | None = None
 
 
 class KnowledgeSourceListOut(BaseModel):

@@ -14,6 +14,7 @@ ProgressFn = Callable[[str, int, str], None]
 
 async def ingest_document(
     db: AsyncSession, *, org_id: str, title: str, text: str, source_type: str = "text",
+    added_by_id: str | None = None,
     on_progress: ProgressFn | None = None,
 ) -> KnowledgeSource:
     def report(stage: str, pct: int, message: str = "") -> None:
@@ -21,7 +22,9 @@ async def ingest_document(
             on_progress(stage, pct, message)
 
     report("chunking", 10, "Preparing your content…")
-    source = KnowledgeSource(title=title, type=source_type, organizationId=org_id)
+    source = KnowledgeSource(
+        title=title, type=source_type, organizationId=org_id, addedById=added_by_id
+    )
     db.add(source)
     await db.flush()
 

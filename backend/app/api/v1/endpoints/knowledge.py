@@ -52,7 +52,8 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 async def _run_upload_job(
-    job_id: str, data: bytes, filename: str, title: str | None, org_id: str
+    job_id: str, data: bytes, filename: str, title: str | None, org_id: str,
+    added_by_id: str | None = None,
 ) -> None:
     job = get_job(job_id)
     if job is None or job.status == "cancelled":
@@ -84,6 +85,7 @@ async def _run_upload_job(
                 title=title or filename,
                 text=text,
                 source_type=stype,
+                added_by_id=added_by_id,
                 on_progress=report,
             )
         complete_job(job, "Upload complete")
@@ -94,7 +96,9 @@ async def _run_upload_job(
         fail_job(job, f"Upload failed: {e}")
 
 
-async def _run_crawl_job(job_id: str, url: str, limit: int, org_id: str) -> None:
+async def _run_crawl_job(
+    job_id: str, url: str, limit: int, org_id: str, added_by_id: str | None = None
+) -> None:
     job = get_job(job_id)
     if job is None or job.status == "cancelled":
         return
@@ -131,6 +135,7 @@ async def _run_crawl_job(job_id: str, url: str, limit: int, org_id: str) -> None
                     title=page["title"] or url,
                     text=page["markdown"],
                     source_type="crawl",
+                    added_by_id=added_by_id,
                     on_progress=report,
                 )
         complete_job(job, f"Crawl complete — {total} pages ready")
@@ -163,7 +168,7 @@ async def add_text(
 ):
     src = await ingest_document(
         db, org_id=user.organizationId, title=body.title,
-        text=body.content, source_type="text",
+        text=body.content, source_type="text", added_by_id=user.id,
     )
     return {"id": src.id}
 
@@ -177,7 +182,7 @@ async def add_faq(
     text = f"Q: {body.question}\nA: {body.answer}"
     src = await ingest_document(
         db, org_id=user.organizationId, title=body.question[:80],
-        text=text, source_type="faq",
+        text=text, source_type="faq", added_by_id=user.id,
     )
     return {"id": src.id}
 
@@ -197,6 +202,7 @@ async def import_faq_csv(
         src = await ingest_document(
             db, org_id=user.organizationId, title=p["question"][:80],
             text=f"Q: {p['question']}\nA: {p['answer']}", source_type="faq",
+            added_by_id=user.id,
         )
         ids.append(src.id)
     return {"imported": len(ids)}
@@ -211,7 +217,7 @@ async def add_crawl(
     """Start a crawl as a background job; poll GET /jobs/{id} for progress."""
     job = create_job("crawl")
     background_tasks.add_task(
-        _run_crawl_job, job.id, body.url, body.limit, user.organizationId
+        _run_crawl_job, job.id, body.url, body.limit, user.organizationId, user.id
     )
     return {"jobId": job.id}
 
@@ -230,7 +236,8 @@ async def upload_file(
     data = await file.read()
     job = create_job("upload")
     background_tasks.add_task(
-        _run_upload_job, job.id, data, file.filename or "", title, user.organizationId
+        _run_upload_job, job.id, data, file.filename or "", title, user.organizationId,
+        user.id,
     )
     return {"jobId": job.id}
 

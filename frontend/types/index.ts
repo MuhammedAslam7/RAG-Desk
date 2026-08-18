@@ -27,6 +27,7 @@ export interface KnowledgeSource {
   type: string;
   chunkCount: number;
   createdAt: string;
+  addedBy: string | null;
 }
 
 export interface KnowledgeSourceList {

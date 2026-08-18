@@ -16,6 +16,9 @@ class KnowledgeSource(Base):
     title: Mapped[str] = mapped_column(String)
     type: Mapped[str] = mapped_column(String, default="text")
     organizationId: Mapped[str] = mapped_column(ForeignKey("Organization.id"))
+    addedById: Mapped[str | None] = mapped_column(
+        ForeignKey("User.id"), nullable=True
+    )  # who added this source (may be null for legacy rows)
     createdAt: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     chunks: Mapped[list["KnowledgeChunk"]] = relationship(
