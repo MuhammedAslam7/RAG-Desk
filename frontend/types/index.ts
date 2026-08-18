@@ -29,6 +29,11 @@ export interface KnowledgeSource {
   createdAt: string;
 }
 
+export interface KnowledgeSourceList {
+  items: KnowledgeSource[];
+  total: number;
+}
+
 export interface OrganizationSettings {
   websiteUrl: string | null;
   fallbackEmail: string | null;

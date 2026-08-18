@@ -4,7 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import KnowledgeChunk, KnowledgeSource
 
 
-async def list_sources(db: AsyncSession, org_id: str) -> list[dict]:
+async def list_sources(
+    db: AsyncSession, org_id: str, limit: int = 20, offset: int = 0
+) -> list[dict]:
     stmt = (
         select(
             KnowledgeSource.id, KnowledgeSource.title, KnowledgeSource.type,
@@ -15,6 +17,8 @@ async def list_sources(db: AsyncSession, org_id: str) -> list[dict]:
         .where(KnowledgeSource.organizationId == org_id)
         .group_by(KnowledgeSource.id)
         .order_by(KnowledgeSource.createdAt.desc())
+        .limit(limit)
+        .offset(offset)
     )
     rows = (await db.execute(stmt)).all()
     return [
@@ -22,6 +26,16 @@ async def list_sources(db: AsyncSession, org_id: str) -> list[dict]:
          "chunkCount": r.chunkCount, "createdAt": r.createdAt}
         for r in rows
     ]
+
+
+async def count_sources(db: AsyncSession, org_id: str) -> int:
+    return (
+        await db.execute(
+            select(func.count(KnowledgeSource.id)).where(
+                KnowledgeSource.organizationId == org_id
+            )
+        )
+    ).scalar_one()
 
 
 async def get_source_for_org(

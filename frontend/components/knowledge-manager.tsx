@@ -39,8 +39,19 @@ const TYPE_ICONS: Record<string, { icon: LucideIcon; color: string }> = {
 };
 
 export default function KnowledgeManager() {
-  const { sources, busy, addText, addFaq, crawl, upload, importFaqCsv, remove } =
-    useKnowledge();
+  const {
+    sources,
+    total,
+    busy,
+    loadingMore,
+    loadMore,
+    addText,
+    addFaq,
+    crawl,
+    upload,
+    importFaqCsv,
+    remove,
+  } = useKnowledge();
   const [method, setMethod] = useState<Method>("upload");
   const [formData, setFormData] = useState({ title: "", content: "", url: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -280,7 +291,7 @@ export default function KnowledgeManager() {
               {/* Sources List */}
               <div>
                 <h2 className="text-lg font-semibold text-foreground mb-4">
-                  Knowledge Sources ({sources.length})
+                  Knowledge Sources ({total})
                 </h2>
                 <div className="space-y-3">
                   {sources.length === 0 ? (
@@ -332,6 +343,23 @@ export default function KnowledgeManager() {
                     ))
                   )}
                 </div>
+                {sources.length > 0 && sources.length < total && (
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      variant="outline"
+                      onClick={loadMore}
+                      disabled={loadingMore}
+                      className="gap-2"
+                    >
+                      {loadingMore ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      {loadingMore ? "Loading..." : "Load more"}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

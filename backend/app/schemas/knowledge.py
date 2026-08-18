@@ -23,3 +23,8 @@ class KnowledgeSourceOut(BaseModel):
     type: str
     chunkCount: int
     createdAt: datetime
+
+
+class KnowledgeSourceListOut(BaseModel):
+    items: list[KnowledgeSourceOut]
+    total: int

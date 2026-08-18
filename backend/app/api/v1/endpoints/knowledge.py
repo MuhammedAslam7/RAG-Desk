@@ -8,7 +8,7 @@ from app.repositories import knowledge_repo
 from app.schemas.knowledge import (
     CrawlIngest,
     FaqIngest,
-    KnowledgeSourceOut,
+    KnowledgeSourceListOut,
     TextIngest,
 )
 from app.services.knowledge.bm25 import bump_bm25_version
@@ -22,12 +22,18 @@ from app.services.knowledge.parsers.pdf import parse_pdf
 router = APIRouter()
 
 
-@router.get("/list", response_model=list[KnowledgeSourceOut])
+@router.get("/list", response_model=KnowledgeSourceListOut)
 async def list_sources(
     user: User = Depends(require_org),
     db: AsyncSession = Depends(get_db),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
-    return await knowledge_repo.list_sources(db, user.organizationId)
+    items = await knowledge_repo.list_sources(
+        db, user.organizationId, limit=limit, offset=offset
+    )
+    total = await knowledge_repo.count_sources(db, user.organizationId)
+    return KnowledgeSourceListOut(items=items, total=total)
 
 
 @router.post("/text")
