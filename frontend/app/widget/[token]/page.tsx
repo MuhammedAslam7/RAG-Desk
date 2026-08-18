@@ -25,6 +25,7 @@ const FONT_STACK: Record<string, string> = {
   system: "ui-sans-serif, system-ui, -apple-system, sans-serif",
 };
 const GOOGLE_FONT_HREF: Record<string, string> = {
+  inter: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
   roboto: "https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap",
   poppins: "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap",
 };
@@ -710,7 +711,7 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
                 {config?.greeting || "Hi! How can I help you today?"}
               </span>
             </div>
-            {config && config.suggestedQuestions.length > 0 && (
+            {config?.suggestedQuestions && config.suggestedQuestions.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-1">
                 {config.suggestedQuestions.map((q) => (
                   <button
@@ -820,7 +821,7 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
                 >
                   {m.content ? (
                     m.content
-                  ) : m.role === "assistant" && loading && config?.aiThinkingAnimation !== false ? (
+                  ) : m.role === "assistant" && loading && config?.aiThinkingAnimation !== false && config?.showTypingIndicator !== false ? (
                     <span className="flex gap-1 py-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
                       <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
@@ -829,10 +830,11 @@ export default function WidgetPage({ params }: { params: Promise<{ token: string
                   ) : null}
                 </span>
               )}
-              {config?.showTimestamps && m.content && m.role !== "system" && (
+              {(config?.showTimestamps || (config?.showReadReceipts && m.role === "user")) && m.content && m.role !== "system" && (
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  {config?.showReadReceipts && m.role === "user" && m.content && " · Seen"}
+                  {config?.showTimestamps && new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {config?.showTimestamps && config?.showReadReceipts && m.role === "user" && " · "}
+                  {config?.showReadReceipts && m.role === "user" && "Seen"}
                 </div>
               )}
             </div>
