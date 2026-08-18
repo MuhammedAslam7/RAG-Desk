@@ -7,6 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Upload,
   FileText,
   HelpCircle,
@@ -28,6 +36,16 @@ const METHODS: { id: Method; label: string; hint: string; icon: LucideIcon }[] =
   { id: "faqcsv", label: "Import CSV", hint: "Bulk import", icon: Grid3x3 },
   { id: "crawl", label: "Crawl website", hint: "Fetch pages", icon: Globe },
 ];
+
+type PendingAdd = {
+  label: string;
+  title: string;
+  detail: string;
+  run: () => Promise<void>;
+};
+
+const truncate = (s: string, n = 160) =>
+  s.length > n ? s.slice(0, n).trimEnd() + "…" : s;
 
 const TYPE_ICONS: Record<string, { icon: LucideIcon; color: string }> = {
   pdf: { icon: FileText, color: "text-rose-500 bg-rose-500/10" },
@@ -54,46 +72,111 @@ export default function KnowledgeManager() {
   } = useKnowledge();
   const [method, setMethod] = useState<Method>("upload");
   const [formData, setFormData] = useState({ title: "", content: "", url: "" });
+  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => setFormData({ title: "", content: "", url: "" });
 
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    await upload(file, formData.title || undefined);
-    resetForm();
     e.target.value = "";
+    if (!file) return;
+    setPendingAdd({
+      label: "Upload file",
+      title: file.name,
+      detail: `File size: ${(file.size / 1024).toFixed(1)} KB. It will be processed and added to your knowledge base.`,
+      run: () => upload(file, formData.title || undefined).then(resetForm),
+    });
   };
 
-  const handleCsvSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    await importFaqCsv(file);
     e.target.value = "";
+    if (!file) return;
+    setPendingAdd({
+      label: "Import CSV",
+      title: file.name,
+      detail: `File size: ${(file.size / 1024).toFixed(1)} KB. Its Q&A rows will be added to your knowledge base.`,
+      run: () => importFaqCsv(file),
+    });
   };
 
-  const handleAddText = async () => {
+  const handleAddText = () => {
     if (!formData.content.trim()) return;
-    await addText(formData.title || "Untitled", formData.content);
-    resetForm();
+    setPendingAdd({
+      label: "Paste text",
+      title: formData.title || "Untitled",
+      detail: truncate(formData.content),
+      run: () =>
+        addText(formData.title || "Untitled", formData.content).then(resetForm),
+    });
   };
 
-  const handleAddFaq = async () => {
+  const handleAddFaq = () => {
     if (!formData.title.trim() || !formData.content.trim()) return;
-    await addFaq(formData.title, formData.content);
-    resetForm();
+    setPendingAdd({
+      label: "Add FAQ",
+      title: formData.title,
+      detail: truncate(formData.content),
+      run: () => addFaq(formData.title, formData.content).then(resetForm),
+    });
   };
 
-  const handleCrawl = async () => {
+  const handleCrawl = () => {
     if (!formData.url.trim()) return;
-    await crawl(formData.url);
-    resetForm();
+    setPendingAdd({
+      label: "Crawl website",
+      title: formData.url,
+      detail:
+        "The crawler will fetch pages from this website and add them to your knowledge base.",
+      run: () => crawl(formData.url).then(resetForm),
+    });
+  };
+
+  const confirmAdd = () => {
+    const pending = pendingAdd;
+    setPendingAdd(null);
+    pending?.run();
   };
 
   return (
     <div className="h-full w-full bg-background flex flex-col">
+      {/* Confirmation Modal */}
+      <Dialog
+        open={!!pendingAdd}
+        onOpenChange={(open) => {
+          if (!open) setPendingAdd(null);
+        }}
+      >
+        <DialogContent className="border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              {pendingAdd ? `Add ${pendingAdd.label}?` : "Add knowledge?"}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {pendingAdd?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-foreground/80">{pendingAdd?.detail}</p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPendingAdd(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmAdd}
+              className="gap-2 bg-primary hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Content */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-8 py-8">
