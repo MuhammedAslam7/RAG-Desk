@@ -6,9 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch, apiJson } from "@/lib/api-client";
 import { AppNotification, NotificationList } from "@/types";
@@ -31,10 +33,18 @@ const NotificationsContext = createContext<NotificationsValue | null>(null);
  */
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
   const [items, setItems] = useState<AppNotification[]>([]);
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Keep the current route in a ref so the SSE handler can read it without
+  // reconnecting the EventSource on every navigation.
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
@@ -66,6 +76,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       try {
         const evt = JSON.parse(e.data);
         if (evt?.type !== "notification") return;
+        if (evt.notification && pathnameRef.current === "/notifications") {
+          // The notifications page is open — auto-mark this one read so the
+          // badge stays cleared while the user watches the list.
+          apiFetch(`/api/v1/notifications/${evt.notification.id}/read`, {
+            method: "POST",
+          }).catch(() => {});
+          setItems((prev) => [{ ...evt.notification, read: true }, ...prev]);
+          setTotal((t) => t + 1);
+          if (typeof evt.unreadCount === "number") {
+            setUnreadCount(Math.max(0, evt.unreadCount - 1));
+          }
+          return;
+        }
         if (typeof evt.unreadCount === "number") setUnreadCount(evt.unreadCount);
         if (evt.notification) {
           setItems((prev) => [evt.notification, ...prev]);
@@ -99,6 +122,22 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
   }, []);
+
+  // Opening the notifications page marks everything as read (badge clears).
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || pathname !== "/notifications") return;
+    let active = true;
+    apiFetch("/api/v1/notifications/read-all", { method: "POST" })
+      .then(() => {
+        if (!active) return;
+        setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+        setUnreadCount(0);
+      })
+      .catch((err) => console.error("Failed to mark notifications read:", err));
+    return () => {
+      active = false;
+    };
+  }, [isLoaded, isSignedIn, pathname]);
 
   const value = useMemo(
     () => ({ items, total, unreadCount, loading, markRead, markAllRead }),

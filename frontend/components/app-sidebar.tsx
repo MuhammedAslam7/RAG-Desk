@@ -151,20 +151,49 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                           <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-primary" />
                         )}
                         <Icon
+                          key={
+                            item.href === "/notifications" ? badge : undefined
+                          }
                           className={`h-[18px] w-[18px] flex-shrink-0 ${
                             active ? "text-primary" : ""
+                          } ${
+                            item.href === "/notifications" && badge > 0
+                              ? "text-rose-400"
+                              : ""
                           }`}
+                          style={
+                            item.href === "/notifications" && badge > 0
+                              ? {
+                                  animation:
+                                    "bell-shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97)",
+                                }
+                              : undefined
+                          }
                         />
                         {isOpen && (
                           <span className="truncate">{item.label}</span>
                         )}
                         {badge > 0 &&
                           (isOpen ? (
-                            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                            <span
+                              key={badge}
+                              className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-red-600 px-1.5 text-[11px] font-bold text-white shadow-lg"
+                              style={{
+                                animation:
+                                  "badge-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), badge-glow 1.2s ease-out, badge-pulse 2s ease-in-out 1.2s infinite",
+                              }}
+                            >
                               {badge > 99 ? "99+" : badge}
                             </span>
                           ) : (
-                            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                            <span
+                              key={badge}
+                              className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-red-600 px-1 text-[10px] font-bold text-white shadow-lg"
+                              style={{
+                                animation:
+                                  "badge-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), badge-glow 1.2s ease-out, badge-pulse 2s ease-in-out 1.2s infinite",
+                              }}
+                            >
                               {badge > 99 ? "99+" : badge}
                             </span>
                           ))}
