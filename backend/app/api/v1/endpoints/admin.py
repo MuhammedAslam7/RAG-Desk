@@ -24,29 +24,37 @@ def _admin_out(user: User) -> dict:
     }
 
 
-@router.get("/me")
-async def admin_me(user: User = Depends(get_current_user)):
-    """Return the current user only if they are an admin."""
-    # Check 1: role must be "admin"
+def _require_admin(user: User) -> None:
+    """Validate that the user is an allowed admin.
+
+    Rules:
+      1. The user's role must be "admin".
+      2. ADMIN_EMAIL must be configured in the environment.
+      3. The user's email must match ADMIN_EMAIL.
+
+    If ADMIN_EMAIL is not set, *all* admin access is denied to prevent
+    unauthorised use of the admin panel.
+    """
     if user.role != "admin":
         raise HTTPException(403, "Admin access required.")
 
-    # Check 2: email must match the configured admin email
     admin_email = settings.ADMIN_EMAIL.strip().lower()
-    if admin_email and user.email and user.email.lower() != admin_email:
+    if not admin_email:
+        raise HTTPException(403, "Admin access not configured. Set ADMIN_EMAIL in .env.")
+
+    if not user.email or user.email.lower() != admin_email:
         raise HTTPException(403, "Admin access required.")
 
+
+@router.get("/me")
+async def admin_me(user: User = Depends(get_current_user)):
+    """Return the current user only if they are an admin."""
+    _require_admin(user)
     return _admin_out(user)
 
 
 @router.post("/verify")
 async def admin_verify(user: User = Depends(get_current_user)):
     """Lightweight endpoint to check admin status (no body returned on failure)."""
-    if user.role != "admin":
-        raise HTTPException(403, "Admin access required.")
-
-    admin_email = settings.ADMIN_EMAIL.strip().lower()
-    if admin_email and user.email and user.email.lower() != admin_email:
-        raise HTTPException(403, "Admin access required.")
-
+    _require_admin(user)
     return {"ok": True, "user": _admin_out(user)}
