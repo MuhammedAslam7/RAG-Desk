@@ -16,14 +16,45 @@ import {
   Separator,
   Icon,
   Stack,
-
   SimpleGrid,
   Stat,
   Alert,
   CloseButton,
+  Center,
+  Spinner,
 } from "@chakra-ui/react";
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
+  const { isLoaded, isSignedIn, isAdmin, user, signOut } = useAuth();
+  const router = useRouter();
+
+  // Redirect to sign-in if not authenticated or not admin
+  useEffect(() => {
+    if (isLoaded && (!isSignedIn || !isAdmin)) {
+      router.replace("/sign-in");
+    }
+  }, [isLoaded, isSignedIn, isAdmin, router]);
+
+  // Loading state
+  if (!isLoaded || !isSignedIn || !isAdmin) {
+    return (
+      <Center minH="100vh">
+        <VStack gap={4}>
+          <Spinner size="lg" color="teal.500" />
+          <Text color="fg.muted">Verifying admin access...</Text>
+        </VStack>
+      </Center>
+    );
+  }
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/sign-in");
+  };
+
   return (
     <Container maxW="container.xl" py={8}>
       {/* Header */}
@@ -32,14 +63,16 @@ export default function Home() {
           <Heading size="2xl" color="fg.default">
             RAG Desk Admin
           </Heading>
-          <Text color="fg.muted">Admin Dashboard — Powered by Chakra UI</Text>
+          <Text color="fg.muted">
+            Welcome, {user?.name || user?.email}
+          </Text>
         </VStack>
         <HStack gap={3}>
           <Button variant="outline" size="sm">
             Docs
           </Button>
-          <Button colorPalette="teal" size="sm">
-            Get Started
+          <Button colorPalette="red" size="sm" onClick={handleSignOut}>
+            Sign Out
           </Button>
         </HStack>
       </Flex>
@@ -186,23 +219,24 @@ export default function Home() {
         </Card.Root>
       </SimpleGrid>
 
-      {/* Code Sample */}
+      {/* Admin Info */}
       <Card.Root mb={8}>
         <Card.Header>
-          <Heading size="md">System Info</Heading>
+          <Heading size="md">Admin Session</Heading>
         </Card.Header>
         <Card.Body>
-          <Box as="pre" p={4} fontSize="sm" borderRadius="md" bg="bg.muted" overflowX="auto" fontFamily="mono">
-            {`// Chakra UI v3 is now active in admin-frontend
-// Components available: Button, Card, Badge, Avatar, Input,
-// Heading, Text, Stack, Grid, Alert, Stat, and many more.
-
-import { Button } from "@chakra-ui/react";
-
-export default function Demo() {
-  return <Button colorPalette="teal">Click me</Button>;
-}`}
-          </Box>
+          <VStack align="start" gap={2}>
+            <Text fontSize="sm">
+              <strong>Email:</strong> {user?.email}
+            </Text>
+            <Text fontSize="sm">
+              <strong>Role:</strong> {user?.role}
+            </Text>
+            <Text fontSize="sm">
+              <strong>Email Verified:</strong>{" "}
+              {user?.emailVerified ? "Yes" : "No"}
+            </Text>
+          </VStack>
         </Card.Body>
       </Card.Root>
 

@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/ai_support"
     FIRECRAWL_API_KEY: str = ""
     FRONTEND_ORIGIN: str = "http://localhost:3000"
+    ADMIN_FRONTEND_ORIGIN: str = "http://localhost:3001"
+    ADMIN_EMAIL: str = ""
 
     # ---- Custom auth (JWT access + refresh tokens in httpOnly cookies) ----
     JWT_SECRET: str = "change-me-to-a-long-random-secret"
