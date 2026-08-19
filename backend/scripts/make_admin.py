@@ -27,8 +27,9 @@ def make_admin(email: str) -> None:
     # Use a synchronous engine built from the same DATABASE_URL
     url = settings.DATABASE_URL
     # psycopg async driver (psycopg+asyncpg) → swap for sync psycopg
-    url = url.replace("postgresql+psycopg://", "postgresql://")
-    url = url.replace("postgresql+asyncpg://", "postgresql://")
+    # Normalise to the sync psycopg (v3) driver that is already installed
+    url = url.replace("postgresql+psycopg_async://", "postgresql+psycopg://")
+    url = url.replace("postgresql+asyncpg://", "postgresql+psycopg://")
     engine = create_engine(url, pool_pre_ping=True)
 
     with Session(engine) as db:
